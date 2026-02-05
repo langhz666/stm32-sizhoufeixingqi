@@ -75,7 +75,7 @@ FreeRTOS 任务优先级与功能分配如下：
 
 1.  **克隆仓库**:
     ```bash
-    git clone [https://github.com/langhz666/stm32-sizhoufeixingqi.git](https://github.com/langhz666/stm32-sizhoufeixingqi.git)
+    git clone https://github.com/langhz666/stm32-sizhoufeixingqi.git
     ```
 2.  **硬件连接**: 按照引脚定义图连接电机、传感器与主控板。
 3.  **编译烧录**: 使用 Keil MDK 打开工程文件，编译并下载至 STM32F103。
