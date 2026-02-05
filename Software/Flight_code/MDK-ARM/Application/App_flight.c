@@ -1,5 +1,4 @@
 #include "App_flight.h"
-
 Gyro_Accel_Struct gyro_accel_data = {0};
 Euler_struct euler_angle = {0};
 Gyro_struct last_gyro = {0};
