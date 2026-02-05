@@ -6,8 +6,6 @@
 
 飞行器通过 2.4G 无线模块接收遥控器的摇杆与按键指令，能够实现自主姿态平衡和基于激光测距的定高悬停。
 
-📺 **[点击观看功能演示视频 (Bilibili)](https://www.bilibili.com/video/BV1hJb1zME6Q?vd_source=1d6eb56c93cf780491517dccbef2468a)**
-
 ## 🛠️ 技术栈 (Tech Stack)
 
 ### 硬件平台 (Hardware)
