@@ -2,8 +2,7 @@
 /**
   ******************************************************************************
   * @file    usart.h
-  * @brief   This file contains all the function prototypes for
-  *          the usart.c file
+  * @brief   USART外设配置头文件
   ******************************************************************************
   * @attention
   *
@@ -17,7 +16,7 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-/* Define to prevent recursive inclusion -------------------------------------*/
+/* 防止重复包含 */
 #ifndef __USART_H__
 #define __USART_H__
 
@@ -32,12 +31,14 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+/** @brief USART1外设句柄（调试串口） */
 extern UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+/** @brief USART1初始化函数 */
 void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -49,4 +50,3 @@ void MX_USART1_UART_Init(void);
 #endif
 
 #endif /* __USART_H__ */
-

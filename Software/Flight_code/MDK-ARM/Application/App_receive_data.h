@@ -1,38 +1,49 @@
+/**
+ * @file    App_receive_data.h
+ * @brief   é¥æŽ§æ•°æ®æŽ¥æ”¶ä¸Žå¤„ç†æ¨¡å—
+ * @author  langhz666
+ * @date    2025-09-27
+ * @note    æŽ¥æ”¶SI24R1æ— çº¿æ•°æ®ï¼Œè§£æžé¥æŽ§æŒ‡ä»¤ï¼Œå¤„ç†é£žè¡ŒçŠ¶æ€æœº
+ *          æ•°æ®å¸§æ ¼å¼: å¸§å¤´(3B) + æ²¹é—¨(2B) + åèˆª(2B) + ä¿¯ä»°(2B) + æ¨ªæ»š(2B) + å…³æœº(1B) + å®šé«˜(1B) + æ ¡éªŒ(4B)
+ */
+
 #ifndef __APP_RECEIVE_DATA__
 #define __APP_RECEIVE_DATA__
 
 #include "Int_SI24R1.h"
 #include "Com_config.h"
 #include "Int_VL53L1X.h"
-// ¶¨ÒåÖ¡Í·Ð£ÑéµÄÖµ
+
+/* ======================== åè®®å®šä¹‰ ======================== */
+
+/** @brief å¸§å¤´æ ¡éªŒå­—èŠ‚ */
 #define FRAME_HEAD_CHECK_1 'l'
 #define FRAME_HEAD_CHECK_2 'h'
 #define FRAME_HEAD_CHECK_3 'z'
 
-// ×î´óÖØÊÔ´ÎÊý
+/** @brief æœ€å¤§é‡è¯•æ¬¡æ•° (è¶…è¿‡åˆ™è®¤ä¸ºé¥æŽ§å™¨æ–­è¿ž) */
 #define MAX_RETRY_TIMES 10
 
+/* ======================== å‡½æ•°å£°æ˜Ž ======================== */
+
 /**
- * @brief ½ÓÊÕÒ£¿ØÆ÷·¢ËÍµÄÒ£¿ØÊý¾Ý => ½âÎöÎª½á¹¹Ìå
- * 
- * @return uint8_t 0:Ð£ÑéÍ¨¹ý ÊÇÕý³£µÄÊý¾Ý 1:Ã»ÊÕµ½Êý¾Ý »òÕß Ð£ÑéÊ§°Ü
+ * @brief æŽ¥æ”¶å¹¶è§£æžé¥æŽ§æ•°æ®
+ * @return 0: è§£æžæˆåŠŸ, 1: æ— æ•°æ®æˆ–æ ¡éªŒå¤±è´¥
+ * @note   æ•°æ®å¸§æ ¡éªŒ: å¸§å¤´æ ¡éªŒ + æ ¡éªŒå’Œæ ¡éªŒ
  */
 uint8_t App_receive_data(void);
 
-
 /**
- * @brief ´¦ÀíÁ¬½Ó×´Ì¬µÄ×´Ì¬
- * 
- * @param res ÉÏÒ»´Î½ÓÊÕÊý¾ÝµÄ·µ»ØÖµ
+ * @brief å¤„ç†é¥æŽ§å™¨è¿žæŽ¥çŠ¶æ€
+ * @param res ä¸Šä¸€æ¬¡æŽ¥æ”¶æ•°æ®çš„è¿”å›žå€¼
+ * @note  è¿žç»­MAX_RETRY_TIMESæ¬¡æŽ¥æ”¶å¤±è´¥åˆ™è®¤ä¸ºæ–­è¿ž
  */
 void App_process_connect_state(uint8_t res);
 
-
-
 /**
- * @brief ´¦Àí·É»úµÄ·ÉÐÐ×´Ì¬
- * 
+ * @brief å¤„ç†é£žè¡ŒçŠ¶æ€æœº
+ * @note  çŠ¶æ€è½¬æ¢: IDLE -> NORMAL -> FIX_HEIGHT -> FAIL -> IDLE
  */
 void App_process_flight_state(void);
 
-#endif // __APP_RECEIVE_DATA__
+#endif /* __APP_RECEIVE_DATA__ */

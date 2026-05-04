@@ -1,196 +1,234 @@
+/**
+ * @file    Int_Mpu6050.c
+ * @brief   MPU6050å…­è½´ä¼ æ„Ÿå™¨é©±åŠ¨å®ç°
+ * @author  langhz666
+ * @date    2025-09-27
+ * @note    é€šè¿‡I2Cæ¥å£è¯»å–é™€èºä»ªå’ŒåŠ é€Ÿåº¦è®¡æ•°æ®
+ *          åŒ…å«è‡ªåŠ¨åç§»æ ¡å‡†åŠŸèƒ½
+ */
+
 #include "Int_mpu6050.h"
 
-// ±£´æÆ«ÒÆÁ¿µÄÖµ
+/* ======================== åç§»æ ¡å‡†å€¼ ======================== */
+
+/** @brief åŠ é€Ÿåº¦è®¡ä¸‰è½´åç§»é‡ */
 int32_t acc_x_offset = 0;
 int32_t acc_y_offset = 0;
 int32_t acc_z_offset = 0;
 
+/** @brief é™€èºä»ªä¸‰è½´åç§»é‡ */
 int32_t gyro_x_offset = 0;
 int32_t gyro_y_offset = 0;
 int32_t gyro_z_offset = 0;
 
+/* ======================== åº•å±‚I2Cè¯»å†™å‡½æ•° ======================== */
+
 /**
- * @brief Ğ´¼Ä´æÆ÷
- *
- * @param reg ¼Ä´æÆ÷µØÖ·
- * @param data ¼Ä´æÆ÷µÄÖµ
+ * @brief å†™MPU6050å¯„å­˜å™¨
+ * @param reg  å¯„å­˜å™¨åœ°å€
+ * @param data è¦å†™å…¥çš„å€¼
  */
 void Int_MPU6050_Write_Reg(uint8_t reg, uint8_t data)
 {
-    // HALÓĞ¹Ì¶¨µÄI2C¶ÁĞ´º¯Êı
-    // 1. ¾ä±ú(hi2c1) 2. ´ÓÉè±¸µØÖ·(0x68) 3. ¼Ä´æÆ÷µØÖ· reg 4. ¼Ä´æÆ÷µØÖ·µÄÎ»Êı 5. Ğ´ÈëµÄÊı¾İµØÖ· 6. Ğ´ÈëµÄ×Ö½Ú¸öÊı 7. ³¬Ê±Ê±¼ä
-    HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR_WRITE, reg, I2C_MEMADD_SIZE_8BIT, &data, 1, 1000);
-}
-
-void Int_MPU6050_Read_Reg(uint8_t reg, uint8_t *data)
-{
-    // 1. ¾ä±ú(hi2c1) 2. ´ÓÉè±¸µØÖ·(0x68) 3. ¼Ä´æÆ÷µØÖ· reg 4. ¼Ä´æÆ÷µØÖ·µÄÎ»Êı 5. ´æ·Å¶ÁÈ¡Êı¾İµÄµØÖ· 6. ¶ÁµÄ×Ö½Ú¸öÊı 7. ³¬Ê±Ê±¼ä
-    HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR_READ, reg, I2C_MEMADD_SIZE_8BIT, data, 1, 1000);
+    HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR_WRITE, reg,
+                      I2C_MEMADD_SIZE_8BIT, &data, 1, 1000);
 }
 
 /**
- * @brief ÔÚ³õÊ¼»¯MPU6050Íê³ÉÖ®ºó ¶ÔMPU6050½øĞĞÁãÆ«Ğ£×¼
- *
+ * @brief è¯»MPU6050å¯„å­˜å™¨
+ * @param reg  å¯„å­˜å™¨åœ°å€
+ * @param data è¯»å–æ•°æ®å­˜æ”¾åœ°å€
+ */
+void Int_MPU6050_Read_Reg(uint8_t reg, uint8_t *data)
+{
+    HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR_READ, reg,
+                     I2C_MEMADD_SIZE_8BIT, data, 1, 1000);
+}
+
+/* ======================== åç§»æ ¡å‡† ======================== */
+
+/**
+ * @brief è®¡ç®—MPU6050åç§»é‡
+ * @note  æ ¡å‡†æµç¨‹:
+ *        1. ç­‰å¾…é£æœºå¹³ç¨³ (è¿ç»­100æ¬¡é‡‡æ ·å˜åŒ–é‡<400)
+ *        2. é‡‡æ ·100æ¬¡å–å¹³å‡ä½œä¸ºåç§»å€¼
+ *        3. Zè½´åŠ é€Ÿåº¦åç§»åŸºäº1g (16384) è®¡ç®—
  */
 void Int_MPU6050_calculate_offset(void)
 {
-    // 1. µÈ´ı·É»úÍ£·ÅÆ½ÎÈ
-    // ÅĞ¶Ï·É»úÊÇ·ñÍ£·ÅÆ½ÎÈµÄ±ê×¼: Ç°ºóÁ½´Î¼ÓËÙ¶ÈµÄÖµ²îÖµĞ¡ÓÚ200 Á¬Ğø100´Î
     Accel_struct current_accel = {0};
     Accel_struct last_accel = {0};
     uint8_t count = 0;
+
+    /* è¯»å–åˆå§‹åŠ é€Ÿåº¦å€¼ */
     Int_MPU6050_Get_Acc(&last_accel);
 
+    /* 1. ç­‰å¾…é£æœºå¹³ç¨³ - è¿ç»­100æ¬¡é‡‡æ ·å˜åŒ–é‡å°äºé˜ˆå€¼ */
     while (count < 100)
     {
         Int_MPU6050_Get_Acc(&current_accel);
-        // ÅĞ¶Ï·É»úÊÇ·ñÆ½ÎÈ Ñ¡ÓÃµÄ²ÎÊı¹ıĞ¡ »áÔì³ÉÒ»Ö±ÎŞ·¨ÅĞ¶ÏÎªÆ½ÎÈ
-        if (abs(current_accel.accel_x - last_accel.accel_x) < 400 && abs(current_accel.accel_y - last_accel.accel_y) < 400 && abs(current_accel.accel_z - last_accel.accel_z) < 400)
+
+        /* åˆ¤æ–­é£æœºæ˜¯å¦å¹³ç¨³ (å„è½´å˜åŒ–é‡<400) */
+        if (abs(current_accel.accel_x - last_accel.accel_x) < 400 &&
+            abs(current_accel.accel_y - last_accel.accel_y) < 400 &&
+            abs(current_accel.accel_z - last_accel.accel_z) < 400)
         {
             count++;
         }
         else
         {
-            count = 0;
+            count = 0; /* ä¸å¹³ç¨³åˆ™é‡æ–°è®¡æ•° */
         }
         last_accel = current_accel;
         vTaskDelay(6);
     }
 
-    // 2. ·É»úÒÑ¾­Æ½ÎÈ ¿ªÊ¼½øĞĞÁãÆ«Ğ£×¼
+    /* 2. é£æœºå·²å¹³ç¨³ï¼Œå¼€å§‹åç§»æ ¡å‡† */
     Gyro_Accel_Struct gyro_accel_data = {0};
     int32_t acc_x_sum = 0;
     int32_t acc_y_sum = 0;
     int32_t acc_z_sum = 0;
-
     int32_t gyro_x_sum = 0;
     int32_t gyro_y_sum = 0;
     int32_t gyro_z_sum = 0;
+
     for (uint8_t i = 0; i < 100; i++)
     {
-        // ÖØĞÂ¶ÁÈ¡¼ÓËÙ¶ÈºÍ½ÇËÙ¶È
         Int_MPU6050_Get_Data(&gyro_accel_data);
+
+        /* åŠ é€Ÿåº¦è®¡åç§» (Zè½´åŸºäº1g = 16384) */
         acc_x_sum += (gyro_accel_data.accel.accel_x - 0);
         acc_y_sum += (gyro_accel_data.accel.accel_y - 0);
-        // ZÖá¼ÓËÙ¶ÈµÄ³õÊ¼»¯Ó¦¸Ã¾ÍÊÇ1g  => Á¿³ÌÊÇ¡À2g => 16384
         acc_z_sum += (gyro_accel_data.accel.accel_z - 16384);
 
+        /* é™€èºä»ªåç§» (é™æ­¢æ—¶åº”ä¸º0) */
         gyro_x_sum += (gyro_accel_data.gyro.gyro_x - 0);
         gyro_y_sum += (gyro_accel_data.gyro.gyro_y - 0);
         gyro_z_sum += (gyro_accel_data.gyro.gyro_z - 0);
 
-        // Ã¿´Î²âÁ¿Êı¾İĞèÒªÌí¼ÓÑÓ³Ù  ¶à´Î²âÁ¿È¡Æ½¾ùÖµ²ÅÓĞÒâÒå
         vTaskDelay(6);
     }
 
+    /* è®¡ç®—å¹³å‡åç§»å€¼ */
     acc_x_offset = acc_x_sum / 100;
     acc_y_offset = acc_y_sum / 100;
     acc_z_offset = acc_z_sum / 100;
-
     gyro_x_offset = gyro_x_sum / 100;
     gyro_y_offset = gyro_y_sum / 100;
     gyro_z_offset = gyro_z_sum / 100;
 }
 
+/* ======================== åˆå§‹åŒ– ======================== */
+
 /**
- * @brief ³õÊ¼»¯MPU6050Ğ¾Æ¬
- *
+ * @brief åˆå§‹åŒ–MPU6050èŠ¯ç‰‡
+ * @note  åˆå§‹åŒ–æ­¥éª¤:
+ *        1. å¤ä½èŠ¯ç‰‡
+ *        2. è®¾ç½®é™€èºä»ªé‡ç¨‹ Â±2000Â°/s
+ *        3. è®¾ç½®åŠ é€Ÿåº¦è®¡é‡ç¨‹ Â±2g
+ *        4. å…³é—­ä¸­æ–­
+ *        5. è®¾ç½®é‡‡æ ·ç‡ 500Hz
+ *        6. è®¾ç½®ä½é€šæ»¤æ³¢ 184Hz
+ *        7. é€‰æ‹©æ—¶é’Ÿæº (PLL)
+ *        8. æ‰§è¡Œåç§»æ ¡å‡†
  */
 void Int_MPU6050_Init(void)
 {
-    // 1. ÖØÆôĞ¾Æ¬ ÖØÖÃËùÓĞ¼Ä´æÆ÷µÄÖµ => Ğ´µçÔ´¹ÜÀí¼Ä´æÆ÷1  => DEVICE_RESET
-    Int_MPU6050_Write_Reg(0x6B, 0x80);
     uint8_t data = 0;
-    // ÖØÖÃÍê³ÉÖ®ºó 0x6B¼Ä´æÆ÷µÄÖµÊÇ0x40 ±íÊ¾µ±Ç°ÎªµÍ¹¦ºÄÄ£Ê½
-    while (data != 0x40)
+
+    /* 1. å¤ä½èŠ¯ç‰‡ */
+    Int_MPU6050_Write_Reg(0x6B, 0x80);
+    while (data != 0x40) /* ç­‰å¾…å¤ä½å®Œæˆ (è¿›å…¥ç¡çœ æ¨¡å¼) */
     {
         Int_MPU6050_Read_Reg(0x6B, &data);
     }
-    // »½ĞÑMPU6050  ½øÈëµ½Õı³£¹¤×÷×´Ì¬
-    Int_MPU6050_Write_Reg(0x6B, 0x00);
+    Int_MPU6050_Write_Reg(0x6B, 0x00); /* å”¤é†’èŠ¯ç‰‡ */
 
-    // 2. Ñ¡ÔñºÏÊÊµÄÁ¿³Ì => ÔÚ¹»ÓÃµÄ·¶Î§ÄÚ Ñ¡ÔñµÄÔ½Ğ¡Ô½ºÃ => ¾«¶È¸ß
-    // 2.1 ÌîĞ´½ÇËÙ¶ÈÁ¿³ÌÎª¡À2000¡ã/s
+    /* 2. è®¾ç½®é™€èºä»ªé‡ç¨‹ Â±2000Â°/s */
     Int_MPU6050_Write_Reg(0x1B, 3 << 3);
 
-    // 2.2 ÌîĞ´¼ÓËÙ¶ÈÁ¿³ÌÎª¡À2g
+    /* 3. è®¾ç½®åŠ é€Ÿåº¦è®¡é‡ç¨‹ Â±2g */
     Int_MPU6050_Write_Reg(0x1C, 0x00);
 
-    // 3. ¹Ø±ÕÖĞ¶ÏÊ¹ÄÜ  ÒòÎªÓÃ²»µ½ÖĞ¶Ï
+    /* 4. å…³é—­ä¸­æ–­ */
     Int_MPU6050_Write_Reg(0x38, 0x00);
 
-    // 4. ÓÃ»§ÅäÖÃ¼Ä´æÆ÷ ²»Ê¹ÓÃFIFO¶ÓÁĞ  ²»Ê¹ÓÃÀ©Õ¹µÄI2C
+    /* 5. å…³é—­FIFOå’ŒI2Cä¸»æœºæ¨¡å¼ */
     Int_MPU6050_Write_Reg(0x6A, 0x00);
 
-    // 5. ÉèÖÃ²ÉÑùÆµÂÊ => ÍÓÂİÒÇ¼à¿ØÈıÖá¼ÓËÙ¶ÈºÍÈıÖá½ÇËÙ¶È => Ä¬ÈÏÆµÂÊ 1000HZ => 1ms¶ÁÈ¡Ò»´Î
-    // »ù±¾Âß¼­ => ²ÉÑùÂÊ±ØĞë´óÓÚºóĞøÊı¾İµÄÊ¹ÓÃÆµÂÊ  ·ñÔòÊ§Õæ => ÏãÅ©¶¨Àí ²ÉÑùÂÊ >= 2±¶Ê¹ÓÃÆµÂÊ
-    // ÉèÖÃ²ÉÑù·ÖÆµÎª2 => ÌîĞ´µÄÖµ¾ÍÊÇ2-1
+    /* 6. è®¾ç½®é‡‡æ ·ç‡åˆ†é¢‘ (1000Hz / (1+1) = 500Hz) */
     Int_MPU6050_Write_Reg(0x19, 0x01);
 
-    // 6. ÉèÖÃµÍÍ¨ÂË²¨µÄÖµÎª184Hz 188Hz => 1
+    /* 7. è®¾ç½®ä½é€šæ»¤æ³¢å¸¦å®½ 184Hz */
     Int_MPU6050_Write_Reg(0x1A, 1);
 
-    // 7. ÅäÖÃÊ¹ÓÃµÄÏµÍ³Ê±ÖÓÎªÌí¼ÓPLLµÄ
+    /* 8. é€‰æ‹©æ—¶é’Ÿæº (PLL with X axis gyroscope) */
     Int_MPU6050_Write_Reg(0x6B, 0x01);
 
-    // 8. Ê¹ÄÜ¼ÓËÙ¶È´«¸ĞÆ÷ºÍ½ÇËÙ¶È´«¸ĞÆ÷
+    /* 9. ä½¿èƒ½åŠ é€Ÿåº¦è®¡å’Œé™€èºä»ª */
     Int_MPU6050_Write_Reg(0x6C, 0x00);
 
-    // 9. ½øĞĞÁãÆ«Ğ£×¼
+    /* 10. æ‰§è¡Œåç§»æ ¡å‡† */
     Int_MPU6050_calculate_offset();
 }
 
+/* ======================== æ•°æ®è¯»å– ======================== */
+
 /**
- * @brief ¶ÁÈ¡ÈıÖá½ÇËÙ¶È  => ĞèÒª½øĞĞÁãÆ«Ğ£×¼ => ±¾Éí¶¶¶¯²»ÑÏÖØ
- *
- * @param gyro
+ * @brief è·å–é™€èºä»ªæ•°æ® (å·²å‡å»åç§»å€¼)
+ * @param gyro é™€èºä»ªæ•°æ®ç»“æ„ä½“æŒ‡é’ˆ
+ * @note  å¯„å­˜å™¨åœ°å€ä»0x43å¼€å§‹ï¼Œé«˜ä½åœ¨å‰ï¼ŒXYZé¡ºåº
  */
 void Int_MPU6050_Get_Gyro(Gyro_struct *gyro)
 {
-    // ´æ´¢½ÇËÙ¶ÈµÄ¼Ä´æÆ÷µØÖ·´Ó0x43¿ªÊ¼ ¸ß8Î»ÔÚÇ°  XYZµÄË³Ğò
     uint8_t hight = 0;
     uint8_t low = 0;
-    // XÖá
+
+    /* Xè½´ */
     Int_MPU6050_Read_Reg(MPU_GYRO_XOUTH_REG, &hight);
     Int_MPU6050_Read_Reg(MPU_GYRO_XOUTL_REG, &low);
     gyro->gyro_x = (hight << 8 | low) - gyro_x_offset;
-    // YÖá
+
+    /* Yè½´ */
     Int_MPU6050_Read_Reg(MPU_GYRO_YOUTH_REG, &hight);
     Int_MPU6050_Read_Reg(MPU_GYRO_YOUTL_REG, &low);
     gyro->gyro_y = (hight << 8 | low) - gyro_y_offset;
-    // ZÖá
+
+    /* Zè½´ */
     Int_MPU6050_Read_Reg(MPU_GYRO_ZOUTH_REG, &hight);
     Int_MPU6050_Read_Reg(MPU_GYRO_ZOUTL_REG, &low);
     gyro->gyro_z = (hight << 8 | low) - gyro_z_offset;
 }
 
 /**
- * @brief ¶ÁÈ¡ÈıÖá¼ÓËÙ¶È  ¶¶¶¯±È½ÏÑÏÖØ ĞèÒªÁãÆ«Ğ£×¼  ZÖáÖµ²»Îª0
- *
- * @param acc
+ * @brief è·å–åŠ é€Ÿåº¦è®¡æ•°æ® (å·²å‡å»åç§»å€¼)
+ * @param acc åŠ é€Ÿåº¦è®¡æ•°æ®ç»“æ„ä½“æŒ‡é’ˆ
+ * @note  Zè½´åç§»åŸºäº1g (16384) è®¡ç®—
  */
 void Int_MPU6050_Get_Acc(Accel_struct *acc)
 {
     uint8_t hight = 0;
     uint8_t low = 0;
-    // XÖá
+
+    /* Xè½´ */
     Int_MPU6050_Read_Reg(MPU_ACCEL_XOUTH_REG, &hight);
     Int_MPU6050_Read_Reg(MPU_ACCEL_XOUTL_REG, &low);
     acc->accel_x = (hight << 8 | low) - acc_x_offset;
-    // YÖá
+
+    /* Yè½´ */
     Int_MPU6050_Read_Reg(MPU_ACCEL_YOUTH_REG, &hight);
     Int_MPU6050_Read_Reg(MPU_ACCEL_YOUTL_REG, &low);
     acc->accel_y = (hight << 8 | low) - acc_y_offset;
-    // ZÖá
+
+    /* Zè½´ */
     Int_MPU6050_Read_Reg(MPU_ACCEL_ZOUTH_REG, &hight);
     Int_MPU6050_Read_Reg(MPU_ACCEL_ZOUTL_REG, &low);
     acc->accel_z = (hight << 8 | low) - acc_z_offset;
 }
 
 /**
- * @brief »ñÈ¡ËùÓĞµÄÁùÖáÊı¾İ
- *
- * @param data
+ * @brief è·å–æ‰€æœ‰ä¼ æ„Ÿå™¨æ•°æ®
+ * @param data ä¼ æ„Ÿå™¨æ•°æ®ç»“æ„ä½“æŒ‡é’ˆ
  */
 void Int_MPU6050_Get_Data(Gyro_Accel_Struct *data)
 {

@@ -2,8 +2,7 @@
 /**
   ******************************************************************************
   * @file    spi.h
-  * @brief   This file contains all the function prototypes for
-  *          the spi.c file
+  * @brief   SPI外设配置头文件
   ******************************************************************************
   * @attention
   *
@@ -17,7 +16,7 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-/* Define to prevent recursive inclusion -------------------------------------*/
+/* 防止重复包含 */
 #ifndef __SPI_H__
 #define __SPI_H__
 
@@ -32,12 +31,14 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+/** @brief SPI1外设句柄（用于SI24R1无线模块） */
 extern SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+/** @brief SPI1初始化函数 */
 void MX_SPI1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -49,4 +50,3 @@ void MX_SPI1_Init(void);
 #endif
 
 #endif /* __SPI_H__ */
-

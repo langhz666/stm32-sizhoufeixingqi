@@ -159,10 +159,10 @@ void DebugMon_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-  // ÊÖ¶¯µ÷ÓÃfreeRTOSµÄsystickÖĞ¶Ï
+  /* æ‰‹åŠ¨è°ƒç”¨FreeRTOSçš„Systickä¸­æ–­å¤„ç† */
   if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
   {
-    // ÅĞ¶ÏfreeRTOSÊÇ·ñÒÑ¾­Æô¶¯  => Èç¹ûÆô¶¯ µ÷ÓÃfreeRTOSµÄsystickÖĞ¶Ï
+    /* åˆ¤æ–­FreeRTOSæ˜¯å¦å·²ç»å¯åŠ¨ => å¦‚æœå·²å¯åŠ¨, è°ƒç”¨FreeRTOSçš„Systickä¸­æ–­ */
     xPortSysTickHandler();
   }
 

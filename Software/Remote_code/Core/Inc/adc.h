@@ -2,8 +2,7 @@
 /**
   ******************************************************************************
   * @file    adc.h
-  * @brief   This file contains all the function prototypes for
-  *          the adc.c file
+  * @brief   ADC外设配置头文件
   ******************************************************************************
   * @attention
   *
@@ -17,7 +16,7 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-/* Define to prevent recursive inclusion -------------------------------------*/
+/* 防止重复包含 */
 #ifndef __ADC_H__
 #define __ADC_H__
 
@@ -32,12 +31,14 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+/** @brief ADC1外设句柄（摇杆数据采集） */
 extern ADC_HandleTypeDef hadc1;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+/** @brief ADC1初始化函数 */
 void MX_ADC1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -49,4 +50,3 @@ void MX_ADC1_Init(void);
 #endif
 
 #endif /* __ADC_H__ */
-

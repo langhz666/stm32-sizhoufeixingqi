@@ -2,8 +2,7 @@
 /**
   ******************************************************************************
   * @file    dma.c
-  * @brief   This file provides code for the configuration
-  *          of all the requested memory to memory DMA transfers.
+  * @brief   DMA控制器配置与初始化
   ******************************************************************************
   * @attention
   *
@@ -16,7 +15,6 @@
   *
   ******************************************************************************
   */
-/* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
 #include "dma.h"
@@ -26,7 +24,7 @@
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
-/* Configure DMA                                                              */
+/* DMA配置                                                                     */
 /*----------------------------------------------------------------------------*/
 
 /* USER CODE BEGIN 1 */
@@ -34,16 +32,26 @@
 /* USER CODE END 1 */
 
 /**
-  * Enable DMA controller clock
-  */
+ * @brief  DMA控制器初始化函数
+ *
+ * @details 配置DMA1控制器：
+ *          - 使能DMA1时钟
+ *          - 配置DMA1_Channel1中断（用于ADC1数据传输）
+ *
+ * DMA通道分配：
+ * - DMA1_Channel1：ADC1 -> 内存（摇杆数据采集）
+ *
+ * @note   此函数由STM32CubeMX自动生成
+ * @note   DMA中断优先级：抢占0，子优先级0
+ */
 void MX_DMA_Init(void)
 {
 
-  /* DMA controller clock enable */
+  /* 使能DMA1控制器时钟 */
   __HAL_RCC_DMA1_CLK_ENABLE();
 
-  /* DMA interrupt init */
-  /* DMA1_Channel1_IRQn interrupt configuration */
+  /* DMA中断配置 */
+  /* DMA1_Channel1中断配置（ADC1数据传输） */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
@@ -52,4 +60,3 @@ void MX_DMA_Init(void)
 /* USER CODE BEGIN 2 */
 
 /* USER CODE END 2 */
-

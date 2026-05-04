@@ -1,77 +1,105 @@
-/*
- * @Author: langhz666 3204498297@qq.com
- * @Date: 2025-09-27 16:30:00
- * @LastEditors: langhz666 3204498297@qq.com
- * @LastEditTime: 2026-02-04 23:54:11
- * @FilePath: \MDK-ARM\Application\App_receive_data.c
- * @Description: ÕâÊÇÄ¬ÈÏÉèÖÃ,ÇëÉèÖÃ`customMade`, ´ò¿ªkoroFileHeader²é¿´ÅäÖÃ ½øĞĞÉèÖÃ: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+/**
+ * @file    App_receive_data.c
+ * @brief   é¥æ§æ•°æ®æ¥æ”¶ä¸å¤„ç†å®ç°
+ * @author  langhz666
+ * @date    2025-09-27
+ * @note    å®ç°é¥æ§æ•°æ®æ¥æ”¶ã€æ ¡éªŒã€è§£æå’Œé£è¡ŒçŠ¶æ€æœºæ§åˆ¶
  */
+
 #include "App_receive_data.h"
 
+/* å¤–éƒ¨å˜é‡å£°æ˜ */
 extern Remote_Data remote_data;
 
+/** @brief æ¥æ”¶ç¼“å†²åŒº */
 uint8_t rx_buff[TX_PLOAD_WIDTH] = {0};
 
-// Ò£¿ØÁ¬½Ó×´Ì¬
+/** @brief é¥æ§å™¨è¿æ¥çŠ¶æ€ */
 extern Remote_State remote_state;
-// ·ÉĞĞ×´Ì¬
+
+/** @brief é£è¡ŒçŠ¶æ€ */
 extern Flight_State flight_state;
 
-// ÓÍÃÅ½âËø×´Ì¬Öµ
+/* ======================== è§£é”çŠ¶æ€æœºå˜é‡ ======================== */
+
+/** @brief æ²¹é—¨è§£é”çŠ¶æ€ */
 Thr_state thr_state = FREE;
-// MAX×´Ì¬µÄ½øÈëÊ±¼ä
+
+/** @brief è¿›å…¥MAXçŠ¶æ€çš„æ—¶é—´æˆ³ */
 uint32_t max_enter_time = 0;
-// MIN×´Ì¬µÄ½øÈëÊ±¼ä
+
+/** @brief è¿›å…¥MINçŠ¶æ€çš„æ—¶é—´æˆ³ */
 uint32_t min_enter_time = 0;
-// ÖØÊÔ´ÎÊı
+
+/** @brief æ¥æ”¶å¤±è´¥é‡è¯•è®¡æ•° */
 uint8_t retry_count = 0;
 
-// °´ÏÂ¶¨¸ßÖ®ºóµÄ·ÉĞĞ¸ß¶È
+/* å¤–éƒ¨å˜é‡ */
 extern uint16_t fix_height;
 extern uint8_t back_buff[TX_PLOAD_WIDTH];
 
+/* ======================== æ•°æ®æ¥æ”¶ä¸è§£æ ======================== */
+
 /**
- * @brief ½ÓÊÕÒ£¿ØÆ÷·¢ËÍµÄÒ£¿ØÊı¾İ => ½âÎöÎª½á¹¹Ìå
- *
- * @return uint8_t 0:Ğ£ÑéÍ¨¹ı ÊÇÕı³£µÄÊı¾İ 1:Ã»ÊÕµ½Êı¾İ »òÕß Ğ£ÑéÊ§°Ü
+ * @brief æ¥æ”¶å¹¶è§£æé¥æ§æ•°æ®
+ * @return 0: è§£ææˆåŠŸ, 1: æ— æ•°æ®æˆ–æ ¡éªŒå¤±è´¥
+ * @note   æ•°æ®å¸§æ ¼å¼ (17å­—èŠ‚):
+ *         [0-2]  å¸§å¤´ 'l','h','z'
+ *         [3-4]  æ²¹é—¨ (é«˜å­—èŠ‚åœ¨å‰)
+ *         [5-6]  åèˆª (é«˜å­—èŠ‚åœ¨å‰)
+ *         [7-8]  ä¿¯ä»° (é«˜å­—èŠ‚åœ¨å‰)
+ *         [9-10] æ¨ªæ»š (é«˜å­—èŠ‚åœ¨å‰)
+ *         [11]   å…³æœºæ ‡å¿—
+ *         [12]   å®šé«˜æ ‡å¿—
+ *         [13-16] æ ¡éªŒå’Œ (å‰13å­—èŠ‚ä¹‹å’Œ)
  */
 uint8_t App_receive_data(void)
 {
+    /* æ¸…ç©ºæ¥æ”¶ç¼“å†²åŒº */
     memset(rx_buff, 0, TX_PLOAD_WIDTH);
+
+    /* æ¥æ”¶SI24R1æ•°æ® */
     uint8_t res = Int_SI24R1_RxPacket(rx_buff);
     if (res == 0)
     {
-        // ÊÕµ½Ò£¿ØÊı¾İ => ×¼±¸»Ø´«
+        /* æ”¶åˆ°æ•°æ®åï¼Œåˆ‡æ¢åˆ°å‘é€æ¨¡å¼å›å¤ç”µæ± ç”µå‹ */
         Int_SI24R1_TX_Mode();
 
         uint16_t count = 500;
-        // »Ø´«Ò²ÒªÑÏ¸ñ°´ÕÕÊ±Ğò => ´Ó½ÓÊÕ³É¹¦Ò£¿ØÊı¾İ¿ªÊ¼·¢ËÍ Ò»Ö±µ½·¢ËÍÍê³É
+        /* å‘é€å›å¤æ•°æ® (å¸¦è¶…æ—¶) */
         while (Int_SI24R1_TxPacket(back_buff) == 1 && count--)
         {
         }
+
+        /* åˆ‡å›æ¥æ”¶æ¨¡å¼ */
         Int_SI24R1_RX_Mode();
     }
 
+    /* æ£€æŸ¥æ˜¯å¦æ”¶åˆ°æ•°æ® */
     if (strlen((char *)rx_buff) == 0)
     {
         return 1;
     }
 
-    // 1. Ö¡Í·Ğ£Ñé
-    if (rx_buff[0] != FRAME_HEAD_CHECK_1 || rx_buff[1] != FRAME_HEAD_CHECK_2 || rx_buff[2] != FRAME_HEAD_CHECK_3)
+    /* 1. å¸§å¤´æ ¡éªŒ */
+    if (rx_buff[0] != FRAME_HEAD_CHECK_1 ||
+        rx_buff[1] != FRAME_HEAD_CHECK_2 ||
+        rx_buff[2] != FRAME_HEAD_CHECK_3)
     {
         return 1;
     }
 
-    // 2. Ö¡Î²Ğ£Ñé
+    /* 2. æ ¡éªŒå’ŒéªŒè¯ */
     uint32_t sum = 0;
     uint32_t sum_receive = 0;
 
+    /* è®¡ç®—å‰13å­—èŠ‚çš„æ ¡éªŒå’Œ */
     for (uint8_t i = 0; i < 13; i++)
     {
         sum += rx_buff[i];
     }
-    // ¸ßÎ»ÔÚÇ°
+
+    /* ä»æ•°æ®å¸§ä¸­æå–æ ¡éªŒå’Œ (å¤§ç«¯åº) */
     sum_receive = rx_buff[13] << 24 | rx_buff[14] << 16 | rx_buff[15] << 8 | rx_buff[16];
 
     if (sum != sum_receive)
@@ -79,95 +107,103 @@ uint8_t App_receive_data(void)
         return 1;
     }
 
-    // 3. ±£´æÊı¾İ
-    remote_data.thr = (rx_buff[3] << 8) | rx_buff[4];
-    remote_data.yaw = (rx_buff[5] << 8) | rx_buff[6];
-    remote_data.pit = (rx_buff[7] << 8) | rx_buff[8];
-    remote_data.rol = (rx_buff[9] << 8) | rx_buff[10];
-    remote_data.shutdown = rx_buff[11];
-    remote_data.fix_height = rx_buff[12];
+    /* 3. è§£æé¥æ§æ•°æ® */
+    remote_data.thr = (rx_buff[3] << 8) | rx_buff[4];      /* æ²¹é—¨ */
+    remote_data.yaw = (rx_buff[5] << 8) | rx_buff[6];      /* åèˆª */
+    remote_data.pit = (rx_buff[7] << 8) | rx_buff[8];      /* ä¿¯ä»° */
+    remote_data.rol = (rx_buff[9] << 8) | rx_buff[10];     /* æ¨ªæ»š */
+    remote_data.shutdown = rx_buff[11];                     /* å…³æœºæ ‡å¿— */
+    remote_data.fix_height = rx_buff[12];                   /* å®šé«˜æ ‡å¿— */
 
-    // debug_printf(":%d,%d,%d,%d,%d,%d\n", remote_data.thr, remote_data.yaw, remote_data.pit, remote_data.rol, remote_data.shutdown, remote_data.fix_height);
     return 0;
 }
 
+/* ======================== è¿æ¥çŠ¶æ€å¤„ç† ======================== */
+
 /**
- * @brief ´¦ÀíÁ¬½Ó×´Ì¬µÄ×´Ì¬
- *
- * @param res ÉÏÒ»´Î½ÓÊÕÊı¾İµÄ·µ»ØÖµ
+ * @brief å¤„ç†é¥æ§å™¨è¿æ¥çŠ¶æ€
+ * @param res ä¸Šä¸€æ¬¡æ¥æ”¶æ•°æ®çš„è¿”å›å€¼
+ * @note  res=0: æ¥æ”¶æˆåŠŸï¼Œé‡ç½®é‡è¯•è®¡æ•°
+ *        res=1: æ¥æ”¶å¤±è´¥ï¼Œç´¯åŠ é‡è¯•è®¡æ•°
+ *        è¿ç»­MAX_RETRY_TIMESæ¬¡å¤±è´¥åˆ™è®¤ä¸ºæ–­è¿
  */
 void App_process_connect_state(uint8_t res)
 {
     if (res == 0)
     {
-        // ½ÓÊÕÊı¾İ³É¹¦Ò»´Î ¼´ÎªÁ¬½Ó³É¹¦
-        // ´Ë´¦Ê¹ÓÃµÄÈ«¾Ö±äÁ¿ Ö»ÓĞµ±Ç°Ò»¸öµØ·½»áĞŞ¸Ä LEDµÆ¿ØÈÎÎñµ±ÖĞÊÇ¶ÁÈ¡Ê¹ÓÃ
+        /* æ¥æ”¶æˆåŠŸ: æ ‡è®°ä¸ºå·²è¿æ¥ */
         remote_state = REMOTE_CONNECTED;
         retry_count = 0;
     }
     else if (res == 1)
     {
-        // ½ÓÊÕÊı¾İÊ§°Ü ¼´Îª
+        /* æ¥æ”¶å¤±è´¥: ç´¯åŠ é‡è¯•è®¡æ•° */
         retry_count++;
         if (retry_count >= MAX_RETRY_TIMES)
         {
+            /* è¶…è¿‡æœ€å¤§é‡è¯•æ¬¡æ•°: æ ‡è®°ä¸ºæ–­è¿ */
             remote_state = REMOTE_DISCONNECTED;
             retry_count = 0;
         }
     }
 }
 
+/* ======================== è§£é”é€»è¾‘ ======================== */
+
 /**
- * @brief ´¦Àí½âËøÂß¼­
- *
- * @return uint8_t 0: ½âËø³É¹¦ 1: ½âËøÊ§°Ü
+ * @brief æ²¹é—¨è§£é”å¤„ç†
+ * @return 0: è§£é”æˆåŠŸ, 1: æœªè§£é”
+ * @note   è§£é”æµç¨‹ (å®‰å…¨ä¿æŠ¤):
+ *         1. æ²¹é—¨æ¨åˆ°æœ€é«˜ (>900)
+ *         2. ä¿æŒ1ç§’ä»¥ä¸Š
+ *         3. æ²¹é—¨æ‹‰åˆ°æœ€ä½ (<100)
+ *         4. ä¿æŒ1ç§’ä»¥ä¸Š
+ *         5. è§£é”æˆåŠŸ
  */
 static uint8_t App_process_unlock(void)
 {
-    // 1. ¿¼ÂÇ°²È«ÎÊÌâ =>  ½âËøÍê³ÉµÄ×îÖÕ×´Ì¬Ó¦¸ÃÊÇÓÍÃÅÎª0
     switch (thr_state)
     {
     case FREE:
+        /* ç©ºé—²çŠ¶æ€: ç­‰å¾…æ²¹é—¨æ¨åˆ°æœ€é«˜ */
         if (remote_data.thr >= 900)
         {
-            // 2. ½øÈëmax×´Ì¬
             thr_state = MAX;
-            // freeRTOS²Ù×÷ÏµÍ³ÖĞÒÔmsÎªµ¥Î»¼ÆÊıµÄÊ±¼ä
             max_enter_time = xTaskGetTickCount();
         }
-
         break;
+
     case MAX:
-        // 3. ³ÖĞøµÄÊ±¼äÓ¦¸ÃÊÇÀë¿ªµÄÊ±¼ä¼õÈ¥½øÈëµÄÊ±¼ä
+        /* æ²¹é—¨æœ€é«˜çŠ¶æ€: æ£€æŸ¥æ˜¯å¦ä¿æŒ1ç§’ */
         if (remote_data.thr < 900)
         {
             if (xTaskGetTickCount() - max_enter_time >= 1000)
             {
-                // 4. ÓÍÃÅ±£³Ö×î¸ß×´Ì¬³¬¹ı1s => ½øÈëleave_max×´Ì¬
+                /* ä¿æŒè¶…è¿‡1ç§’: è¿›å…¥ä¸‹ä¸€çŠ¶æ€ */
                 thr_state = LEAVE_MAX;
             }
             else
             {
-                // 5. ÓÍÃÅ±£³Ö×î¸ß×´Ì¬Ê±¼äĞ¡ÓÚ1s => ÍË»Øµ½free ÖØĞÂ½âËø
+                /* ä¿æŒä¸è¶³1ç§’: å›åˆ°ç©ºé—²çŠ¶æ€ */
                 thr_state = FREE;
             }
         }
-
         break;
+
     case LEAVE_MAX:
+        /* ç¦»å¼€æœ€é«˜çŠ¶æ€: ç­‰å¾…æ²¹é—¨æ‹‰åˆ°æœ€ä½ */
         if (remote_data.thr <= 100)
         {
-            // 6. ÓÍÃÅ»Øµ½0  ½øÈëmin×´Ì¬
             thr_state = MIN;
             min_enter_time = xTaskGetTickCount();
         }
-
         break;
+
     case MIN:
-        // 7. Ã¿´ÎÅĞ¶Ïµ±Ç°ÒÑ¾­±£³ÖÁË¶à¾Ã
+        /* æ²¹é—¨æœ€ä½çŠ¶æ€: æ£€æŸ¥æ˜¯å¦ä¿æŒ1ç§’ */
         if (xTaskGetTickCount() - min_enter_time <= 1000)
         {
-            // »¹²»¹»1s
+            /* 1ç§’å†…æ²¹é—¨ç¦»å¼€æœ€ä½: å›åˆ°ç©ºé—²çŠ¶æ€ */
             if (remote_data.thr > 100)
             {
                 thr_state = FREE;
@@ -175,83 +211,83 @@ static uint8_t App_process_unlock(void)
         }
         else
         {
-            // ÒÑ¾­±£³Ö¹»1s => ½âËøÍê³É
+            /* ä¿æŒè¶…è¿‡1ç§’: è§£é”æˆåŠŸ */
             thr_state = UNLOCK;
         }
+        break;
 
-        break;
     case UNLOCK:
-        /* code */
+        /* è§£é”æˆåŠŸ: ä¿æŒçŠ¶æ€ */
         break;
+
     default:
         break;
     }
 
-    if (thr_state == UNLOCK)
-    {
-        return 0;
-    }
-
-    return 1;
+    return (thr_state == UNLOCK) ? 0 : 1;
 }
 
+/* ======================== é£è¡ŒçŠ¶æ€æœº ======================== */
+
 /**
- * @brief ´¦Àí·É»úµÄ·ÉĞĞ×´Ì¬
- *
+ * @brief é£è¡ŒçŠ¶æ€æœºå¤„ç†
+ * @note  çŠ¶æ€è½¬æ¢å›¾:
+ *         IDLE --(è§£é”æˆåŠŸ)--> NORMAL
+ *         NORMAL --(å®šé«˜æŒ‡ä»¤)--> FIX_HEIGHT
+ *         NORMAL --(é¥æ§æ–­è¿)--> FAIL
+ *         FIX_HEIGHT --(å–æ¶ˆå®šé«˜)--> NORMAL
+ *         FIX_HEIGHT --(é¥æ§æ–­è¿)--> FAIL
+ *         FAIL --(ç”µæœºåœæ­¢)--> IDLE
  */
 void App_process_flight_state(void)
 {
-    // Ê¹ÓÃ×´Ì¬»úÂß¼­ÊµÏÖ
-    // 1. ÂÖÑ¯µ÷ÓÃÅĞ¶Ïµ±Ç°Ëù´¦µÄ×´Ì¬
     switch (flight_state)
     {
     case IDLE:
-        // 2. Ö»ĞèÒª±àĞ´Ö¸ÏòÆäËû×´Ì¬µÄ´úÂë¼´¿É
+        /* ç©ºé—²çŠ¶æ€: ç­‰å¾…è§£é” */
         if (App_process_unlock() == 0)
         {
             flight_state = NORMAL;
-            // Ã¿Ò»´Î½âËø³É¹¦  ĞèÒª½«½âËø×´Ì¬ÖØÖÃ
-            thr_state = FREE;
+            thr_state = FREE; /* é‡ç½®è§£é”çŠ¶æ€ */
         }
-
         break;
+
     case NORMAL:
-        // 3. ÅĞ¶Ï½øÈë¶¨¸ß
+        /* æ­£å¸¸é£è¡Œ: æ£€æµ‹å®šé«˜æŒ‡ä»¤ */
         if (remote_data.fix_height == 1)
         {
             flight_state = FIX_HEIGHT;
             remote_data.fix_height = 0;
-
-            // ¼ÇÂ¼ÏÂµ±Ç°Ä¿±êµÄ¸ß¶È
+            /* è®°å½•å½“å‰é«˜åº¦ä½œä¸ºå®šé«˜ç›®æ ‡ */
             fix_height = Int_VL53L1X_GetDistance();
         }
-        // 4. ÅĞ¶Ï½øÈë¹ÊÕÏÊ§Áª×´Ì¬
+        /* æ£€æŸ¥é¥æ§å™¨æ–­è¿ */
         if (remote_state == REMOTE_DISCONNECTED)
         {
             flight_state = FAIL;
         }
-
         break;
+
     case FIX_HEIGHT:
-        // 5. È¡Ïû¶¨¸ß
+        /* å®šé«˜é£è¡Œ: æ£€æŸ¥å–æ¶ˆå®šé«˜æŒ‡ä»¤ */
         if (remote_data.fix_height == 1)
         {
             flight_state = NORMAL;
             remote_data.fix_height = 0;
         }
-        // 6. ÅĞ¶Ï¹ÊÕÏ
+        /* æ£€æŸ¥é¥æ§å™¨æ–­è¿ */
         if (remote_state == REMOTE_DISCONNECTED)
         {
             flight_state = FAIL;
         }
         break;
-    case FAIL:
-        // 7.´¦ÀíÊ§Áª¹ÊÕÏ  »ºÂıÍ£Ö¹µç»ú
-        // µÈ´ı¹ÊÕÏ´¦ÀíÍê³É => Ò»Ö±µÈ´¦ÀíÍê³É ²»»á³öÏÖ³¬Ê±
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
+    case FAIL:
+        /* æ•…éšœçŠ¶æ€: ç­‰å¾…ç”µæœºå®Œå…¨åœæ­¢ */
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         flight_state = IDLE;
         break;
+
     default:
         break;
     }

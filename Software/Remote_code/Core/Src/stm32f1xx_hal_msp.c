@@ -2,9 +2,8 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file         stm32f1xx_hal_msp.c
-  * @brief        This file provides code for the MSP Initialization
-  *               and de-Initialization codes.
+  * @file    stm32f1xx_hal_msp.c
+  * @brief   HAL MSP（MCU Support Package）初始化与反初始化
   ******************************************************************************
   * @attention
   *
@@ -17,7 +16,6 @@
   *
   ******************************************************************************
   */
-/* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -58,9 +56,18 @@
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
+
 /**
-  * Initializes the Global MSP.
-  */
+ * @brief  全局MSP初始化函数
+ *
+ * @details 初始化MCU支持包：
+ *          - 使能AFIO时钟（用于引脚重映射）
+ *          - 使能PWR时钟（电源管理）
+ *          - 配置JTAG引脚（禁用JTAG，保留SWD）
+ *
+ * @note   此函数由HAL_Init()自动调用
+ * @note   此函数由STM32CubeMX自动生成
+ */
 void HAL_MspInit(void)
 {
 
@@ -68,13 +75,13 @@ void HAL_MspInit(void)
 
   /* USER CODE END MspInit 0 */
 
-  __HAL_RCC_AFIO_CLK_ENABLE();
-  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_RCC_AFIO_CLK_ENABLE();   /* 使能AFIO时钟（引脚重映射） */
+  __HAL_RCC_PWR_CLK_ENABLE();    /* 使能PWR时钟（电源管理） */
 
-  /* System interrupt init*/
+  /* 系统中断初始化 */
 
-  /** NOJTAG: JTAG-DP Disabled and SW-DP Enabled
-  */
+  /** 禁用JTAG，保留SWD调试接口
+   */
   __HAL_AFIO_REMAP_SWJ_NOJTAG();
 
   /* USER CODE BEGIN MspInit 1 */

@@ -1,138 +1,208 @@
-#ifndef __nRF24L01P__
-#define __nRF24L01P__
+/**
+ * @file    Int_SI24R1.h
+ * @brief   SI24R1 2.4Gæ— çº¿æ¨¡å—é©±åŠ¨æ¥å£
+ * @author  langhz666
+ * @date    2025-09-27
+ *
+ * @details SI24R1æ˜¯nRF24L01+å…¼å®¹çš„2.4GHzæ— çº¿æ”¶å‘èŠ¯ç‰‡ã€‚
+ *          æœ¬å¤´æ–‡ä»¶å®šä¹‰äº†SI24R1é©±åŠ¨çš„æ‰€æœ‰å…¬å…±æ¥å£ã€‚
+ *
+ * ä¸»è¦åŠŸèƒ½ï¼š
+ * - å¯„å­˜å™¨è¯»å†™
+ * - TX/RXæ¨¡å¼åˆ‡æ¢
+ * - æ•°æ®åŒ…æ”¶å‘
+ * - æ¨¡å—åˆå§‹åŒ–
+ *
+ * ç¡¬ä»¶è¿æ¥ï¼š
+ * - SPI1_SCK  -> PB3
+ * - SPI1_MISO -> PB4
+ * - SPI1_MOSI -> PB5
+ * - SPI1_NSS  -> PA15ï¼ˆè½¯ä»¶æ§åˆ¶ï¼‰
+ * - SI_EN     -> PB7ï¼ˆèŠ¯ç‰‡ä½¿èƒ½ï¼‰
+ *
+ * ä½¿ç”¨ç¤ºä¾‹ï¼š
+ * @code
+ * // åˆå§‹åŒ–
+ * Int_SI24R1_Init();
+ *
+ * // å‘é€æ•°æ®
+ * uint8_t tx_buf[17] = {...};
+ * Int_SI24R1_TX_Mode();
+ * Int_SI24R1_TxPacket(tx_buf);
+ *
+ * // æ¥æ”¶æ•°æ®
+ * uint8_t rx_buf[17] = {0};
+ * Int_SI24R1_RX_Mode();
+ * if (Int_SI24R1_RxPacket(rx_buf) == 0)
+ * {
+ *     // å¤„ç†æ¥æ”¶åˆ°çš„æ•°æ®
+ * }
+ * @endcode
+ */
 
-#include "spi.h"
-#include "Com_debug.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#ifndef __INT_SI24R1_H__
+#define __INT_SI24R1_H__
 
-// (1) STM32¿ª·¢°åÊ¹ÓÃSI24R1ĞèÒªÏÈµ½CUBEMXÖĞÅäÖÃSPI
-// À­µÍÆ¬Ñ¡
-#define CS_LOW HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
-// À­¸ßÆ¬Ñ¡
-#define CS_HIGH HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
+/* ======================== å¤´æ–‡ä»¶å¼•ç”¨ ======================== */
 
-// À­µÍÊ¹ÄÜ
-#define CE_LOW HAL_GPIO_WritePin(SI_EN_GPIO_Port, SI_EN_Pin, GPIO_PIN_RESET);
-// À­¸ßÊ¹ÄÜ
-#define CE_HIGH HAL_GPIO_WritePin(SI_EN_GPIO_Port, SI_EN_Pin, GPIO_PIN_SET);
+#include "spi.h"            /* SPIé©±åŠ¨ */
+#include "Com_debug.h"      /* è°ƒè¯•æ‰“å° */
+#include "FreeRTOS.h"       /* FreeRTOSå†…æ ¸ */
+#include "task.h"           /* FreeRTOSä»»åŠ¡ */
 
-// Ñ¡ÔñÊ¹ÓÃµÄÉäÆµÍ¨µÀ
-#define CHANNEL 40
-#define TX_ADR_WIDTH 5    // 5×Ö½Ú¿í¶ÈµÄ·¢ËÍ/½ÓÊÕµØÖ·
-#define TX_PLOAD_WIDTH 17 // Êı¾İÍ¨µÀÓĞĞ§Êı¾İ¿í¶È
+/* ======================== GPIOæ§åˆ¶å® ======================== */
 
-//********************************************************************************************************************//
-// SPI(SI24R1) commands
-#define SI24R1_READ_REG 0x00  // Define read command to register
-#define SI24R1_WRITE_REG 0x20 // Define write command to register
-#define RD_RX_PLOAD 0x61      // Define RX payload register address
-#define WR_TX_PLOAD 0xA0      // Define TX payload register address
-#define FLUSH_TX 0xE1         // Define flush TX register command
-#define FLUSH_RX 0xE2         // Define flush RX register command
-#define REUSE_TX_PL 0xE3      // Define reuse TX payload register command
-#define NOP 0xFF              // Define No Operation, might be used to read status register
+/**
+ * @name SPIç‰‡é€‰æ§åˆ¶
+ * @{
+ */
+#define CS_LOW      HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET)   /**< æ‹‰ä½CSï¼Œé€‰ä¸­èŠ¯ç‰‡ */
+#define CS_HIGH     HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET)     /**< æ‹‰é«˜CSï¼Œé‡Šæ”¾èŠ¯ç‰‡ */
+/** @} */
 
-//********************************************************************************************************************//
-// SPI(SI24R1) registers(addresses)
-#define CONFIG 0x00      // 'Config' register address
-#define EN_AA 0x01       // 'Enable Auto Acknowledgment' register address
-#define EN_RXADDR 0x02   // 'Enabled RX addresses' register address
-#define SETUP_AW 0x03    // 'Setup address width' register address
-#define SETUP_RETR 0x04  // 'Setup Auto. Retrans' register address
-#define RF_CH 0x05       // 'RF channel' register address
-#define RF_SETUP 0x06    // 'RF setup' register address
-#define STATUS 0x07      // 'Status' register address
-#define OBSERVE_TX 0x08  // 'Observe TX' register address
-#define RSSI 0x09        // 'Received Signal Strength Indecator' register address
-#define RX_ADDR_P0 0x0A  // 'RX address pipe0' register address
-#define RX_ADDR_P1 0x0B  // 'RX address pipe1' register address
-#define RX_ADDR_P2 0x0C  // 'RX address pipe2' register address
-#define RX_ADDR_P3 0x0D  // 'RX address pipe3' register address
-#define RX_ADDR_P4 0x0E  // 'RX address pipe4' register address
-#define RX_ADDR_P5 0x0F  // 'RX address pipe5' register address
-#define TX_ADDR 0x10     // 'TX address' register address
-#define RX_PW_P0 0x11    // 'RX payload width, pipe0' register address
-#define RX_PW_P1 0x12    // 'RX payload width, pipe1' register address
-#define RX_PW_P2 0x13    // 'RX payload width, pipe2' register address
-#define RX_PW_P3 0x14    // 'RX payload width, pipe3' register address
-#define RX_PW_P4 0x15    // 'RX payload width, pipe4' register address
-#define RX_PW_P5 0x16    // 'RX payload width, pipe5' register address
-#define FIFO_STATUS 0x17 // 'FIFO Status Register' register address
+/**
+ * @name èŠ¯ç‰‡ä½¿èƒ½æ§åˆ¶
+ * @{
+ */
+#define CE_LOW      HAL_GPIO_WritePin(SI_EN_GPIO_Port, SI_EN_Pin, GPIO_PIN_RESET)         /**< æ‹‰ä½CEï¼Œè¿›å…¥é…ç½®æ¨¡å¼ */
+#define CE_HIGH     HAL_GPIO_WritePin(SI_EN_GPIO_Port, SI_EN_Pin, GPIO_PIN_SET)           /**< æ‹‰é«˜CEï¼Œå¯åŠ¨æ”¶å‘ */
+/** @} */
 
-//********************************************************************************************************************//
-// STATUS Register
-#define RX_DR 0x40 /**/
-#define TX_DS 0x20
-#define MAX_RT 0x10
+/* ======================== RFé…ç½®å‚æ•° ======================== */
 
-//********************************************************************************************************************//
-//                                        FUNCTION's PROTOTYPES                                                       //
-//********************************************************************************************************************//
-// SI24R1 API Functions
+/**
+ * @name RFå‚æ•°å®šä¹‰
+ * @{
+ */
+#define CHANNEL         40      /**< RFä¿¡é“ï¼š0-125ï¼Œé¢‘ç‡ = 2400 + CHANNEL (MHz) */
+#define TX_ADR_WIDTH    5       /**< TX/RXåœ°å€å®½åº¦ï¼ˆå­—èŠ‚ï¼‰ */
+#define TX_PLOAD_WIDTH  17      /**< æœ‰æ•ˆè½½è·å®½åº¦ï¼ˆå­—èŠ‚ï¼‰ */
+/** @} */
 
-/********************************************************
-º¯Êı¹¦ÄÜ£ºĞ´¼Ä´æÆ÷µÄÖµ£¨µ¥×Ö½Ú£©
-Èë¿Ú²ÎÊı£ºreg:¼Ä´æÆ÷Ó³ÉäµØÖ·£¨¸ñÊ½£ºSI24R1_WRITE_REG£üreg£©
-                    value:¼Ä´æÆ÷µÄÖµ
-·µ»Ø  Öµ£º×´Ì¬¼Ä´æÆ÷µÄÖµ
-*********************************************************/
+/* ======================== SI24R1 SPIå‘½ä»¤ ======================== */
+
+/**
+ * @name SPIå‘½ä»¤å®šä¹‰
+ * @{
+ */
+#define SI24R1_READ_REG     0x00    /**< è¯»å¯„å­˜å™¨å‘½ä»¤ */
+#define SI24R1_WRITE_REG    0x20    /**< å†™å¯„å­˜å™¨å‘½ä»¤ */
+#define RD_RX_PLOAD         0x61    /**< è¯»RXæœ‰æ•ˆè½½è· */
+#define WR_TX_PLOAD         0xA0    /**< å†™TXæœ‰æ•ˆè½½è· */
+#define FLUSH_TX            0xE1    /**< æ¸…é™¤TX FIFO */
+#define FLUSH_RX            0xE2    /**< æ¸…é™¤RX FIFO */
+#define REUSE_TX_PL         0xE3    /**< é‡ç”¨ä¸Šæ¬¡TXæœ‰æ•ˆè½½è· */
+#define NOP                 0xFF    /**< ç©ºæ“ä½œï¼ˆç”¨äºè¯»å–çŠ¶æ€ï¼‰ */
+/** @} */
+
+/* ======================== SI24R1å¯„å­˜å™¨åœ°å€ ======================== */
+
+/**
+ * @name å¯„å­˜å™¨åœ°å€å®šä¹‰
+ * @{
+ */
+#define CONFIG          0x00    /**< é…ç½®å¯„å­˜å™¨ */
+#define EN_AA           0x01    /**< è‡ªåŠ¨åº”ç­”ä½¿èƒ½ */
+#define EN_RXADDR       0x02    /**< RXåœ°å€ä½¿èƒ½ */
+#define SETUP_AW        0x03    /**< åœ°å€å®½åº¦è®¾ç½® */
+#define SETUP_RETR      0x04    /**< è‡ªåŠ¨é‡ä¼ è®¾ç½® */
+#define RF_CH           0x05    /**< RFä¿¡é“ */
+#define RF_SETUP        0x06    /**< RFè®¾ç½® */
+#define STATUS          0x07    /**< çŠ¶æ€å¯„å­˜å™¨ */
+#define OBSERVE_TX      0x08    /**< å‘é€è§‚æµ‹ */
+#define RSSI            0x09    /**< æ¥æ”¶ä¿¡å·å¼ºåº¦ */
+#define RX_ADDR_P0      0x0A    /**< RXç®¡é“0åœ°å€ */
+#define RX_ADDR_P1      0x0B    /**< RXç®¡é“1åœ°å€ */
+#define RX_ADDR_P2      0x0C    /**< RXç®¡é“2åœ°å€ */
+#define RX_ADDR_P3      0x0D    /**< RXç®¡é“3åœ°å€ */
+#define RX_ADDR_P4      0x0E    /**< RXç®¡é“4åœ°å€ */
+#define RX_ADDR_P5      0x0F    /**< RXç®¡é“5åœ°å€ */
+#define TX_ADDR         0x10    /**< TXåœ°å€ */
+#define RX_PW_P0        0x11    /**< RXç®¡é“0æœ‰æ•ˆè½½è·å®½åº¦ */
+#define RX_PW_P1        0x12    /**< RXç®¡é“1æœ‰æ•ˆè½½è·å®½åº¦ */
+#define RX_PW_P2        0x13    /**< RXç®¡é“2æœ‰æ•ˆè½½è·å®½åº¦ */
+#define RX_PW_P3        0x14    /**< RXç®¡é“3æœ‰æ•ˆè½½è·å®½åº¦ */
+#define RX_PW_P4        0x15    /**< RXç®¡é“4æœ‰æ•ˆè½½è·å®½åº¦ */
+#define RX_PW_P5        0x16    /**< RXç®¡é“5æœ‰æ•ˆè½½è·å®½åº¦ */
+#define FIFO_STATUS     0x17    /**< FIFOçŠ¶æ€å¯„å­˜å™¨ */
+/** @} */
+
+/* ======================== STATUSå¯„å­˜å™¨ä½å®šä¹‰ ======================== */
+
+/**
+ * @name STATUSå¯„å­˜å™¨ä½
+ * @{
+ */
+#define RX_DR           0x40    /**< æ•°æ®å°±ç»ªä¸­æ–­æ ‡å¿— */
+#define TX_DS           0x20    /**< æ•°æ®å‘é€å®Œæˆä¸­æ–­æ ‡å¿— */
+#define MAX_RT          0x10    /**< è¾¾åˆ°æœ€å¤§é‡ä¼ æ¬¡æ•°ä¸­æ–­æ ‡å¿— */
+/** @} */
+
+/* ======================== APIå‡½æ•°å£°æ˜ ======================== */
+
+/**
+ * @brief  å†™å•ä¸ªå¯„å­˜å™¨
+ * @param  reg å¯„å­˜å™¨åœ°å€ï¼ˆä½¿ç”¨ SI24R1_WRITE_REG + reg_addr æ ¼å¼ï¼‰
+ * @param  value è¦å†™å…¥çš„å€¼
+ * @return çŠ¶æ€å¯„å­˜å™¨å€¼
+ */
 uint8_t Int_SI24R1_Write_Reg(uint8_t reg, uint8_t value);
-/********************************************************
-º¯Êı¹¦ÄÜ£ºĞ´¼Ä´æÆ÷µÄÖµ£¨¶à×Ö½Ú£©
-Èë¿Ú²ÎÊı£ºreg:¼Ä´æÆ÷Ó³ÉäµØÖ·£¨¸ñÊ½£ºSI24R1_WRITE_REG£üreg£©
-                    pBuf:Ğ´Êı¾İÊ×µØÖ·
-                    bytes:Ğ´Êı¾İ×Ö½ÚÊı
-·µ»Ø  Öµ£º×´Ì¬¼Ä´æÆ÷µÄÖµ
-*********************************************************/
+
+/**
+ * @brief  å†™å¤šä¸ªå­—èŠ‚åˆ°å¯„å­˜å™¨
+ * @param  reg å¯„å­˜å™¨åœ°å€
+ * @param  pBuf æ•°æ®ç¼“å†²åŒºæŒ‡é’ˆ
+ * @param  size æ•°æ®å­—èŠ‚æ•°
+ * @return çŠ¶æ€å¯„å­˜å™¨å€¼
+ */
 uint8_t Int_SI24R1_Write_Buf(uint8_t reg, const uint8_t *pBuf, uint8_t size);
-/********************************************************
-º¯Êı¹¦ÄÜ£º¶ÁÈ¡¼Ä´æÆ÷µÄÖµ£¨µ¥×Ö½Ú£©
-Èë¿Ú²ÎÊı£ºreg:¼Ä´æÆ÷Ó³ÉäµØÖ·£¨¸ñÊ½£ºSI24R1_READ_REG£üreg£©
-·µ»Ø  Öµ£º¼Ä´æÆ÷Öµ
-*********************************************************/
+
+/**
+ * @brief  è¯»å•ä¸ªå¯„å­˜å™¨
+ * @param  reg å¯„å­˜å™¨åœ°å€ï¼ˆä½¿ç”¨ SI24R1_READ_REG + reg_addr æ ¼å¼ï¼‰
+ * @return å¯„å­˜å™¨å€¼
+ */
 uint8_t Int_SI24R1_Read_Reg(uint8_t reg);
-/********************************************************
-º¯Êı¹¦ÄÜ£º¶ÁÈ¡¼Ä´æÆ÷µÄÖµ£¨¶à×Ö½Ú£©
-Èë¿Ú²ÎÊı£ºreg:¼Ä´æÆ÷Ó³ÉäµØÖ·£¨SI24R1_READ_REG£üreg£©
-                    pBuf:½ÓÊÕ»º³åÇøµÄÊ×µØÖ·
-                    bytes:¶ÁÈ¡×Ö½ÚÊı
-·µ»Ø  Öµ£º×´Ì¬¼Ä´æÆ÷µÄÖµ
-*********************************************************/
+
+/**
+ * @brief  è¯»å¤šä¸ªå­—èŠ‚ä»å¯„å­˜å™¨
+ * @param  reg å¯„å­˜å™¨åœ°å€
+ * @param  pBuf æ¥æ”¶ç¼“å†²åŒºæŒ‡é’ˆ
+ * @param  size è¯»å–å­—èŠ‚æ•°
+ * @return çŠ¶æ€å¯„å­˜å™¨å€¼
+ */
 uint8_t Int_SI24R1_Read_Buf(uint8_t reg, uint8_t *pBuf, uint8_t size);
 
-/********************************************************
-º¯Êı¹¦ÄÜ£ºSI24R1½ÓÊÕÄ£Ê½³õÊ¼»¯
-Èë¿Ú²ÎÊı£ºÎŞ
-·µ»Ø  Öµ£ºÎŞ
-*********************************************************/
+/**
+ * @brief  é…ç½®SI24R1ä¸ºæ¥æ”¶æ¨¡å¼
+ * @details é…ç½®å‚æ•°ï¼šç®¡é“0åœ°å€ã€è‡ªåŠ¨åº”ç­”ã€RFä¿¡é“40ã€1Mbpsã€16ä½CRC
+ */
 void Int_SI24R1_RX_Mode(void);
-/********************************************************
-º¯Êı¹¦ÄÜ£ºSI24R1·¢ËÍÄ£Ê½³õÊ¼»¯
-Èë¿Ú²ÎÊı£ºÎŞ
-·µ»Ø  Öµ£ºÎŞ
-*********************************************************/
+
+/**
+ * @brief  é…ç½®SI24R1ä¸ºå‘é€æ¨¡å¼
+ * @details é…ç½®å‚æ•°ï¼šå‘é€åœ°å€ã€è‡ªåŠ¨é‡ä¼ 10æ¬¡ã€RFä¿¡é“40ã€1Mbpsã€16ä½CRC
+ */
 void Int_SI24R1_TX_Mode(void);
 
-/********************************************************
-º¯Êı¹¦ÄÜ£º¶ÁÈ¡½ÓÊÕÊı¾İ   Ó²¼şÖ±½Ó½ÓÊÕÊı¾İ±£´æµ½ FIFO¶ÓÁĞÖĞ => Í¨¹ı×´Ì¬±êÖ¾Î»ÅĞ¶Ï¶ÓÁĞÖĞÊÇ·ñÓĞÊı¾İ 
-Èë¿Ú²ÎÊı£ºrxbuf:½ÓÊÕÊı¾İ´æ·ÅÊ×µØÖ·
-·µ»Ø  Öµ£º0:½ÓÊÕµ½Êı¾İ
-		  1:Ã»ÓĞ½ÓÊÕµ½Êı¾İ
-*********************************************************/
+/**
+ * @brief  æ¥æ”¶æ•°æ®åŒ…
+ * @param  rxbuf æ¥æ”¶ç¼“å†²åŒºæŒ‡é’ˆï¼ˆ>= TX_PLOAD_WIDTHå­—èŠ‚ï¼‰
+ * @return 0: æ¥æ”¶åˆ°æ•°æ®ï¼Œ1: æ— æ•°æ®
+ */
 uint8_t Int_SI24R1_RxPacket(uint8_t *rxbuf);
 
-/********************************************************
-º¯Êı¹¦ÄÜ£º·¢ËÍÒ»¸öÊı¾İ°ü
-Èë¿Ú²ÎÊı£ºtxbuf:Òª·¢ËÍµÄÊı¾İ
-·µ»Ø  Öµ: 0: ·¢ËÍ³É¹¦ 1: ·¢ËÍÊ§°Ü
-*********************************************************/
+/**
+ * @brief  å‘é€æ•°æ®åŒ…
+ * @param  txbuf å‘é€ç¼“å†²åŒºæŒ‡é’ˆï¼ˆ>= TX_PLOAD_WIDTHå­—èŠ‚ï¼‰
+ * @return 0: å‘é€æˆåŠŸï¼Œ1: å‘é€å¤±è´¥ï¼ˆè¾¾åˆ°æœ€å¤§é‡ä¼ æ¬¡æ•°ï¼‰
+ */
 uint8_t Int_SI24R1_TxPacket(uint8_t *txbuf);
 
 /**
- * @brief Ó²¼ş½Ó¿Ú²ãSI24R1µÄ³õÊ¼»¯
- *
+ * @brief  åˆå§‹åŒ–SI24R1æ¨¡å—
+ * @details åˆå§‹åŒ–æµç¨‹ï¼šä¸Šç”µå»¶æ—¶200ms -> éªŒè¯SPIé€šä¿¡ -> è®¾ç½®é»˜è®¤æ¥æ”¶æ¨¡å¼
  */
-void Int_SI24R1_Init(void); // SI24R1 Pin Init
-//********************************************************************************************************************//
-#endif
+void Int_SI24R1_Init(void);
+
+#endif /* __INT_SI24R1_H__ */

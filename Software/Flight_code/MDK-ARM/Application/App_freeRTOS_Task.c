@@ -1,210 +1,248 @@
+/**
+ * @file    App_freeRTOS_Task.c
+ * @brief   FreeRTOSä»»åŠ¡ç®¡ç†å®ç°
+ * @author  langhz666
+ * @date    2025-09-27
+ * @note    STM32F103C8T6 SRAM 20KBï¼Œåˆ†é…12KBç»™FreeRTOS
+ *          ä»»åŠ¡æ ˆä½¿ç”¨é™æ€åˆ†é…ï¼Œé¿å…å†…å­˜ç¢ç‰‡
+ */
+
 #include "App_freeRTOS_Task.h"
 
-// STM32F103C8T6 => SRAM 20k  => ·ÖÅä12K¸ø²Ù×÷ÏµÍ³
-// ÄÚ´æ¹ÜÀí => CÓïÑÔÖĞµÄ½á¹¹ÌåÍ¨³£±£´æÔÚ¶ÑÖĞ  ²»»á×Ô¶¯À¬»ø»ØÊÕ  => Ê¼ÖÕÊ¹ÓÃÍ¬Ò»¸ö½á¹¹Ìå ²»¶ÏÑ­»·Ê¹ÓÃ
+/* ======================== LEDå®šä¹‰ ======================== */
 
-// LED½á¹¹Ìå
+/** @brief å·¦ä¸ŠLED (æŒ‡ç¤ºé¥æ§å™¨è¿æ¥çŠ¶æ€) */
 LED_Struct left_top_led = {.port = LED1_GPIO_Port, .pin = LED1_Pin};
+
+/** @brief å³ä¸ŠLED (æŒ‡ç¤ºé¥æ§å™¨è¿æ¥çŠ¶æ€) */
 LED_Struct right_top_led = {.port = LED2_GPIO_Port, .pin = LED2_Pin};
+
+/** @brief å³ä¸‹LED (æŒ‡ç¤ºé£è¡ŒçŠ¶æ€) */
 LED_Struct right_bottom_led = {.port = LED3_GPIO_Port, .pin = LED3_Pin};
+
+/** @brief å·¦ä¸‹LED (æŒ‡ç¤ºé£è¡ŒçŠ¶æ€) */
 LED_Struct left_bottom_led = {.port = LED4_GPIO_Port, .pin = LED4_Pin};
 
-// ±íÊ¾µ±Ç°Á¬½Ó×´Ì¬
+/* ======================== å…¨å±€çŠ¶æ€å˜é‡ ======================== */
+
+/** @brief é¥æ§å™¨è¿æ¥çŠ¶æ€ */
 Remote_State remote_state = REMOTE_DISCONNECTED;
 
-// ±íÊ¾µ±Ç°µÄ·ÉĞĞ×´Ì¬
+/** @brief é£è¡ŒçŠ¶æ€ */
 Flight_State flight_state = IDLE;
 
-// À©Õ¹»ñÈ¡½ÓÊÕµÄÒ£¿ØÊı¾İ
+/** @brief é¥æ§å™¨æ•°æ® (é»˜è®¤å€¼: æ²¹é—¨0ï¼Œå…¶ä»–500) */
 Remote_Data remote_data = {.thr = 0, .yaw = 500, .pit = 500, .rol = 500, .fix_height = 0, .shutdown = 0};
 
-// °´ÏÂ¶¨¸ßµÄÊ±ºò ·ÉĞĞµÄ¸ß¶È
+/** @brief å®šé«˜ç›®æ ‡é«˜åº¦ */
 uint16_t fix_height = 0;
 
-// µç³ØµçÑ¹ => Êı×é±£´æ
+/** @brief ç”µæ± ç”µå‹å›å¤ç¼“å†²åŒº */
 uint8_t back_buff[TX_PLOAD_WIDTH] = {0};
 
-// µçÔ´¹ÜÀíÈÎÎñ
+/* ======================== ä»»åŠ¡é…ç½® ======================== */
+
+/* --- ç”µæºç®¡ç†ä»»åŠ¡ --- */
 void power_task(void *args);
-// ×îĞ¡ÍÆ¼öÌîĞ´128 => 128*4 = 512B
-#define POWER_TASK_STACK_SIZE 128
-// ÈÎÎñÓÅÏÈ¼¶ => ÊıÖµÔ½Ğ¡ ÓÅÏÈ¼¶Ô½Ğ¡  => ×î´ó4  => ²»ÍÆ¼öÊ¹ÓÃ×îĞ¡ÓÅÏÈ¼¶0
-#define POWER_TASK_PRIORITY 4
+#define POWER_TASK_STACK_SIZE   128     /**< æ ˆå¤§å° 128*4 = 512B */
+#define POWER_TASK_PRIORITY     4       /**< ä¼˜å…ˆçº§ (æ•°å€¼è¶Šå°ä¼˜å…ˆçº§è¶Šä½) */
 TaskHandle_t power_task_handle;
-// ¶¨ÒåÈÎÎñµÄÖÜÆÚ
-#define POWER_TASK_PERIOD 10000
+#define POWER_TASK_PERIOD       10000   /**< å‘¨æœŸ 10ç§’ */
 
-// ·ÉĞĞ¿ØÖÆÈÎÎñ
+/* --- é£è¡Œæ§åˆ¶ä»»åŠ¡ --- */
 void flight_task(void *args);
-#define FLIGHT_TASK_STACK_SIZE 128
-#define FLIGHT_TASK_PRIORITY 3
+#define FLIGHT_TASK_STACK_SIZE  128
+#define FLIGHT_TASK_PRIORITY    3
 TaskHandle_t flight_task_handle;
-#define FLIGHT_TASK_PERIOD 6
+#define FLIGHT_TASK_PERIOD      6       /**< å‘¨æœŸ 6ms (166Hz) */
 
-// LEDÈÎÎñ
+/* --- LEDæŒ‡ç¤ºä»»åŠ¡ --- */
 void led_task(void *args);
-#define LED_TASK_STACK_SIZE 128
-#define LED_TASK_PRIORITY 1
+#define LED_TASK_STACK_SIZE     128
+#define LED_TASK_PRIORITY       1       /**< æœ€ä½ä¼˜å…ˆçº§ */
 TaskHandle_t led_task_handle;
-#define LED_TASK_PERIOD 100
+#define LED_TASK_PERIOD         100     /**< å‘¨æœŸ 100ms */
 
-// Í¨Ñ¶ÈÎÎñ
+/* --- é€šä¿¡å¤„ç†ä»»åŠ¡ --- */
 void com_task(void *args);
-#define COM_TASK_STACK_SIZE 128
-#define COM_TASK_PRIORITY 4
+#define COM_TASK_STACK_SIZE     128
+#define COM_TASK_PRIORITY       4
 TaskHandle_t com_task_handle;
-// ÈÎÎñÖÜÆÚ
-#define COM_TASK_PERIOD 10
+#define COM_TASK_PERIOD         10      /**< å‘¨æœŸ 10ms */
+
+/* ======================== ä»»åŠ¡å¯åŠ¨ ======================== */
 
 /**
- * @brief Æô¶¯freeRTOS²Ù×÷ÏµÍ³
- *
+ * @brief å¯åŠ¨FreeRTOSä»»åŠ¡è°ƒåº¦ç³»ç»Ÿ
+ * @note  åˆ›å»ºæ‰€æœ‰ä»»åŠ¡å¹¶å¯åŠ¨è°ƒåº¦å™¨
  */
 void App_freeRTOS_start(void)
 {
-    // 1. ´´½¨µçÔ´¹ÜÀíÈÎÎñ
-    xTaskCreate(power_task, "power_task", POWER_TASK_STACK_SIZE, NULL, POWER_TASK_PRIORITY, &power_task_handle);
+    /* 1. åˆ›å»ºç”µæºç®¡ç†ä»»åŠ¡ */
+    xTaskCreate(power_task, "power_task", POWER_TASK_STACK_SIZE,
+                NULL, POWER_TASK_PRIORITY, &power_task_handle);
 
-    // 2. ´´½¨·ÉĞĞ¿ØÖÆÈÎÎñ
-    xTaskCreate(flight_task, "flight_task", FLIGHT_TASK_STACK_SIZE, NULL, FLIGHT_TASK_PRIORITY, &flight_task_handle);
+    /* 2. åˆ›å»ºé£è¡Œæ§åˆ¶ä»»åŠ¡ */
+    xTaskCreate(flight_task, "flight_task", FLIGHT_TASK_STACK_SIZE,
+                NULL, FLIGHT_TASK_PRIORITY, &flight_task_handle);
 
-    // 3. ´´½¨LEDµÆÈÎÎñ
-    xTaskCreate(led_task, "led_task", LED_TASK_STACK_SIZE, NULL, LED_TASK_PRIORITY, &led_task_handle);
+    /* 3. åˆ›å»ºLEDæŒ‡ç¤ºä»»åŠ¡ */
+    xTaskCreate(led_task, "led_task", LED_TASK_STACK_SIZE,
+                NULL, LED_TASK_PRIORITY, &led_task_handle);
 
-    // 4. ´´½¨Í¨Ñ¶ÈÎÎñ
-    xTaskCreate(com_task, "com_task", COM_TASK_STACK_SIZE, NULL, COM_TASK_PRIORITY, &com_task_handle);
+    /* 4. åˆ›å»ºé€šä¿¡å¤„ç†ä»»åŠ¡ */
+    xTaskCreate(com_task, "com_task", COM_TASK_STACK_SIZE,
+                NULL, COM_TASK_PRIORITY, &com_task_handle);
 
-    // 5. Æô¶¯µ÷¶ÈÆ÷
+    /* 5. å¯åŠ¨ä»»åŠ¡è°ƒåº¦å™¨ */
     vTaskStartScheduler();
 }
 
+/* ======================== ç”µæºç®¡ç†ä»»åŠ¡ ======================== */
+
+/**
+ * @brief ç”µæºç®¡ç†ä»»åŠ¡
+ * @note  åŠŸèƒ½:
+ *        - æ¯10ç§’æ‰§è¡Œä¸€æ¬¡è‡ªåŠ¨å¼€æœº
+ *        - æ”¶åˆ°å…³æœºé€šçŸ¥æ—¶æ‰§è¡Œå…³æœº
+ *        - ä½¿ç”¨ä»»åŠ¡é€šçŸ¥å®ç°å…³æœºä¿¡å·
+ */
 void power_task(void *args)
 {
-    // »ñÈ¡µ±Ç°µÄ»ù×¼Ê±¼ä
     TickType_t xLastWakeTime = xTaskGetTickCount();
+
     while (1)
     {
-
-        // // Ã¿10sÖ´ĞĞÒ»´Î  =>  Æô¶¯µçÔ´  ±ÜÃâ×Ô¶¯¹Ø»ú
-        // vTaskDelayUntil(&xLastWakeTime, POWER_TASK_PERIOD);
-
-        // // Æô¶¯µçÔ´
-        // Int_IP5305T_start();
-
-        // Ê¹ÓÃÖ±½ÓÈÎÎñÍ¨ÖªµÄ½ÓÊÕ·½·¨ÊµÏÖ10s´¦ÀíÒ»´Î
-        // Ò»Ö±µÈÈÎÎñÍ¨Öª  Ö±µ½ÊÕµ½Í¨Öªres=1  »òÕß  ³¬Ê±res=0
+        /*
+         * ç­‰å¾…ä»»åŠ¡é€šçŸ¥:
+         * - æ”¶åˆ°é€šçŸ¥: æ‰§è¡Œå…³æœº
+         * - è¶…æ—¶(10ç§’): æ‰§è¡Œè‡ªåŠ¨å¼€æœº
+         */
         uint32_t res = ulTaskNotifyTake(pdTRUE, POWER_TASK_PERIOD);
         if (res != 0)
         {
-            // ÊÕµ½¹Ø»úÍ¨Öª
+            /* æ”¶åˆ°å…³æœºé€šçŸ¥ */
             Int_IP5305T_shutdown();
         }
         else
         {
-            // ²»ĞèÒª¹Ø»ú => Õı³£Ö´ĞĞÆô¶¯
+            /* è¶…æ—¶: æ‰§è¡Œè‡ªåŠ¨å¼€æœº */
             Int_IP5305T_start();
         }
     }
 }
 
+/* ======================== é£è¡Œæ§åˆ¶ä»»åŠ¡ ======================== */
+
+/**
+ * @brief é£è¡Œæ§åˆ¶ä»»åŠ¡ (æ ¸å¿ƒä»»åŠ¡)
+ * @note  æ‰§è¡Œæµç¨‹ (6mså‘¨æœŸ):
+ *        1. è¯»å–MPU6050æ•°æ®ï¼Œè§£ç®—æ¬§æ‹‰è§’
+ *        2. è®¡ç®—ä¸‰è½´PID
+ *        3. å®šé«˜PID (24mså‘¨æœŸ)
+ *        4. ç”µæœºæ··æ§è¾“å‡º
+ */
 void flight_task(void *args)
 {
-    // »ñÈ¡µ±Ç°µÄ»ù×¼Ê±¼ä
     TickType_t xLastWakeTime = xTaskGetTickCount();
     uint8_t count = 0;
-    // Ò»¶¨ÒªÏÈ¶ÔMPU6050Ö´ĞĞ³õÊ¼»¯²Ù×÷ => Ö®ºó²ÅÄÜ¶ÁÈ¡Êı¾İ
+
+    /* åˆå§‹åŒ–é£æ§ (å«MPU6050æ ¡å‡†) */
     App_flight_init();
+
     while (1)
     {
-        // 1. »ñ¸ù¾İMPU6050²âÁ¿µÄÊı¾İ  ×ËÌ¬½âËãµÃµ½Å·À­½Ç
+        /* 1. å§¿æ€è§£ç®—: è¯»å–ä¼ æ„Ÿå™¨æ•°æ® -> æ»¤æ³¢ -> è®¡ç®—æ¬§æ‹‰è§’ */
         App_flight_get_euler_angle();
 
-        // 2. ¸ù¾İµ±Ç°µÄÅ·À­½Ç  ½øĞĞPID¼ÆËã¿ØÖÆ
+        /* 2. PIDæ§åˆ¶: æ ¹æ®é¥æ§å™¨æŒ‡ä»¤å’Œå½“å‰å§¿æ€è®¡ç®—PIDè¾“å‡º */
         App_flight_pid_process();
 
-        // 3. ÅĞ¶Ï¶¨¸ß
+        /* 3. å®šé«˜æ§åˆ¶: æ¯24msæ‰§è¡Œä¸€æ¬¡ (æ¿€å…‰ä¼ æ„Ÿå™¨é‡‡æ ·å‘¨æœŸ) */
         if (flight_state == FIX_HEIGHT)
         {
-            // ²ÅĞèÒª¼ÆËãPID  => ¼¤¹â²â¾àÒÇµÄÊı¾İ²É¼¯ 20msÒ»´Î
             count++;
-            if (count >= 4)
+            if (count >= 4) /* 4 * 6ms = 24ms */
             {
                 App_flight_fix_height_pid_process();
                 count = 0;
             }
         }
 
-        // 3. ¸ù¾İPID¼ÆËãµÄ½á¹û ¶Ôµç»ú½øĞĞ¿ØÖÆ
+        /* 4. ç”µæœºæ§åˆ¶: æ··æ§è¾“å‡ºåˆ°å››ä¸ªç”µæœº */
         App_flight_control_motor();
 
-        // // 4. ´òÓ¡¼¤¹â²â¾àÒÇµÃµ½µÄ¾àÀëÖµ
-        // uint16_t distance = Int_VL53L1X_GetDistance();
-        // debug_printf("distance:%d\r\n", distance);
-
+        /* å‘¨æœŸå»¶æ—¶ (ç²¾ç¡®6ms) */
         vTaskDelayUntil(&xLastWakeTime, FLIGHT_TASK_PERIOD);
     }
 }
 
+/* ======================== LEDæŒ‡ç¤ºä»»åŠ¡ ======================== */
+
+/**
+ * @brief LEDæŒ‡ç¤ºä»»åŠ¡
+ * @note  LEDæŒ‡ç¤ºé€»è¾‘:
+ *        å‰ä¸¤ä¸ªLED: é¥æ§å™¨è¿æ¥çŠ¶æ€ (äº®=è¿æ¥, ç­=æ–­å¼€)
+ *        åä¸¤ä¸ªLED: é£è¡ŒçŠ¶æ€
+ *        - IDLE: æ…¢é—ª (500msäº®/500msç­)
+ *        - NORMAL: å¿«é—ª (200msäº®/200msç­)
+ *        - FIX_HEIGHT: å¸¸äº®
+ *        - FAIL: å¸¸ç­
+ */
 void led_task(void *args)
 {
-
-    // »ñÈ¡µ±Ç°µÄ»ù×¼Ê±¼ä
     TickType_t xLastWakeTime = xTaskGetTickCount();
     uint8_t count = 0;
+
     while (1)
     {
         count++;
-        // Ç°Á½¸öµÆ±íÊ¾Á¬½Ó×´Ì¬
-        // 1. ÅĞ¶Ïµ±Ç°Á¬½Ó×´Ì¬
+
+        /* --- é¥æ§å™¨è¿æ¥çŠ¶æ€æŒ‡ç¤º --- */
         if (remote_state == REMOTE_CONNECTED)
         {
-            // µãÁÁÇ°Á½¸öµÆ
             Int_led_turn_on(&left_top_led);
             Int_led_turn_on(&right_top_led);
         }
         else if (remote_state == REMOTE_DISCONNECTED)
         {
-            // ¹ØµôÇ°Á½¸öµÆ
             Int_led_turn_off(&left_top_led);
             Int_led_turn_off(&right_top_led);
         }
 
-        // ºóÁ½¸öµÆ±íÊ¾·ÉĞĞ×´Ì¬
-        // 2. ÅĞ¶Ïµ±Ç°·ÉĞĞ×´Ì¬
+        /* --- é£è¡ŒçŠ¶æ€æŒ‡ç¤º --- */
         if (flight_state == IDLE)
         {
-            // µÆÂıÉÁË¸ => 500msÁÁ 500msÃğ
+            /* æ…¢é—ª: 500mså‘¨æœŸ (5 * 100ms) */
             if (count % 5 == 0)
             {
-                // Ñ­»·5´Î  Ò»´ÎÊÇ100ms  5´ÎµÈÓÚ500ms
                 Int_led_toggle(&left_bottom_led);
                 Int_led_toggle(&right_bottom_led);
             }
         }
         else if (flight_state == NORMAL)
         {
-            // µÆ¿ìÉÁ  =>  200msÁÁ 200msÃğ
+            /* å¿«é—ª: 200mså‘¨æœŸ (2 * 100ms) */
             if (count % 2 == 0)
             {
-                // Ñ­»·2´Î  Ò»´ÎÊÇ100ms  2´ÎµÈÓÚ200ms
                 Int_led_toggle(&left_bottom_led);
                 Int_led_toggle(&right_bottom_led);
             }
         }
         else if (flight_state == FIX_HEIGHT)
         {
-            // ºóÁ½¸öµÆ³£Á¿
+            /* å¸¸äº® */
             Int_led_turn_on(&left_bottom_led);
             Int_led_turn_on(&right_bottom_led);
         }
         else if (flight_state == FAIL)
         {
-            // ºóÁ½¸öµÆÃğ
+            /* å¸¸ç­ */
             Int_led_turn_off(&left_bottom_led);
             Int_led_turn_off(&right_bottom_led);
         }
 
-        // ½«count¼ÆÊıÖØÖÃ
+        /* è®¡æ•°å™¨å½’é›¶ (10 * 100ms = 1ç§’) */
         if (count == 10)
         {
             count = 0;
@@ -214,38 +252,47 @@ void led_task(void *args)
     }
 }
 
+/* ======================== é€šä¿¡å¤„ç†ä»»åŠ¡ ======================== */
+
+/**
+ * @brief é€šä¿¡å¤„ç†ä»»åŠ¡
+ * @note  æ‰§è¡Œæµç¨‹ (10mså‘¨æœŸ):
+ *        1. æ¥æ”¶é¥æ§æ•°æ®
+ *        2. å¤„ç†è¿æ¥çŠ¶æ€
+ *        3. å¤„ç†å…³æœºæŒ‡ä»¤
+ *        4. å¤„ç†é£è¡ŒçŠ¶æ€æœº
+ *        5. è¯»å–ç”µæ± ç”µå‹å¹¶å›å¤
+ */
 void com_task(void *args)
 {
-    // »ñÈ¡µ±Ç°µÄ»ù×¼Ê±¼ä
     TickType_t xLastWakeTime = xTaskGetTickCount();
+
+    /* åˆå§‹åŒ–ç”µæ± ADC */
     Int_bat_ADC_Init();
+
     while (1)
     {
-        // 1. ½ÓÊÕÊı¾İ
+        /* 1. æ¥æ”¶å¹¶è§£æé¥æ§æ•°æ® */
         uint8_t res = App_receive_data();
 
-        // 2. ¸ù¾İ½ÓÊÕÊı¾İµÄ·µ»ØÖµ ´¦Àíµ±Ç°·É»úµÄÁ¬½Ó×´Ì¬
+        /* 2. å¤„ç†é¥æ§å™¨è¿æ¥çŠ¶æ€ */
         App_process_connect_state(res);
 
-        // 3. ´¦Àí¹Ø»úÃüÁî
+        /* 3. å¤„ç†å…³æœºæŒ‡ä»¤ */
         if (remote_data.shutdown == 1)
         {
-            // Ê¹ÓÃInt_IP5305T_shutdown ¹Ø»ú  ¹¦ÄÜ¿ÉÒÔÊµÏÖ  µ«ÊÇÏîÄ¿½á¹¹±È½ÏÆæ¹Ö
-            // Int_IP5305T_shutdown();
-
-            // Ê¹ÓÃfreeRTOSÖ±½ÓÈÎÎñÍ¨Öª => Í¨ÖªµçÔ´ÈÎÎñ => Ö´ĞĞ¹Ø»ú
+            /* é€šè¿‡ä»»åŠ¡é€šçŸ¥è¯·æ±‚ç”µæºç®¡ç†ä»»åŠ¡æ‰§è¡Œå…³æœº */
             xTaskNotifyGive(power_task_handle);
         }
 
-        // 4. ´¦Àí·É»úµÄ·ÉĞĞ×´Ì¬  => Óöµ½¹ÊÕÏ×´Ì¬(Ê§Áª) => »áÒ»Ö±µÈ´ıÈÎÎñÍ¨Öª
+        /* 4. å¤„ç†é£è¡ŒçŠ¶æ€æœº */
         App_process_flight_state();
 
-        // 5. ×¼±¸»Ø´«µç³ØµçÑ¹Öµ
+        /* 5. è¯»å–ç”µæ± ç”µå‹å¹¶å‡†å¤‡å›å¤æ•°æ® */
         float voltage = Int_bat_ADC_Read();
         sprintf((char *)back_buff, "%.2f", voltage);
-        // debug_printf("voltage:%.2f\r\n", voltage);
 
-        // 6msÖ´ĞĞÒ»´Î ½ÓÊÕÊı¾İµÄÊ±¼ä¼ä¸ôÓ¦¸ÃµÈÓÚ·¢ËÍÊı¾İµÄÊ±¼ä¼ä¸ô
+        /* å‘¨æœŸå»¶æ—¶ */
         vTaskDelay(COM_TASK_PERIOD);
     }
 }

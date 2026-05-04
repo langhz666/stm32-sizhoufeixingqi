@@ -2,8 +2,7 @@
 /**
   ******************************************************************************
   * @file    gpio.h
-  * @brief   This file contains all the function prototypes for
-  *          the gpio.c file
+  * @brief   GPIO引脚配置头文件
   ******************************************************************************
   * @attention
   *
@@ -17,7 +16,7 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-/* Define to prevent recursive inclusion -------------------------------------*/
+/* 防止重复包含 */
 #ifndef __GPIO_H__
 #define __GPIO_H__
 
@@ -36,6 +35,7 @@ extern "C" {
 
 /* USER CODE END Private defines */
 
+/** @brief GPIO初始化函数 */
 void MX_GPIO_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -46,4 +46,3 @@ void MX_GPIO_Init(void);
 }
 #endif
 #endif /*__ GPIO_H__ */
-

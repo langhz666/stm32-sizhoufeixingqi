@@ -1,28 +1,76 @@
-/*
- * @Author: langhz666 3204498297@qq.com
- * @Date: 2025-09-27 16:30:01
- * @LastEditors: langhz666 3204498297@qq.com
- * @LastEditTime: 2026-02-04 23:55:05
- * @FilePath: \MDK-ARM\Application\App_transmit_data.h
- * @Description: ����Ĭ������,������`customMade`, ��koroFileHeader�鿴���� ��������: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+/**
+ * @file    App_transmit_data.h
+ * @brief   数据传输模块接口
+ * @author  langhz666
+ * @date    2025-09-27
+ *
+ * @details 本头文件定义了数据传输模块的公共接口：
+ *          - 帧头校验字节定义
+ *          - App_transmit_data()函数声明
+ *
+ * 通信协议说明：
+ * - 帧头："lhz"（3字节）用于设备识别
+ * - 数据：摇杆值（8字节）+ 控制标志（2字节）
+ * - 校验：前13字节累加和（4字节）
+ * - 总长度：17字节
+ *
+ * @note   帧头字节可自定义，用于区分不同设备
+ * @note   校验和用于接收端验证数据完整性
  */
+
 #ifndef __APP_TRANSMIT_DATA__
 #define __APP_TRANSMIT_DATA__
 
-#include "Int_SI24R1.h"
-#include "App_process_data.h"
+/* ======================== 头文件引用 ======================== */
+
+/* 驱动层头文件 */
+#include "Int_SI24R1.h"         /* 2.4G无线模块驱动 */
+
+/* 应用层头文件 */
+#include "App_process_data.h"   /* 数据处理模块 */
+
+/* FreeRTOS头文件 */
 #include "FreeRTOS.h"
 #include "task.h"
-// ����֡ͷУ���ֵ
-#define FRAME_HEAD_CHECK_1 'l'
-#define FRAME_HEAD_CHECK_2 'h'
-#define FRAME_HEAD_CHECK_3 'z'
+
+/* ======================== 帧头定义 ======================== */
 
 /**
- * @brief �Զ��л�SI24R1��ģʽ => ���ɼ���ɵ�ң�����ݴ�����͵��ɻ�
- * 
+ * @brief 帧头校验字节
+ *
+ * 用于接收端识别数据帧起始位置
+ * 可自定义为任意值，但发送端和接收端必须一致
+ */
+#define FRAME_HEAD_CHECK_1  'l'     /**< 帧头第1字节：0x6C */
+#define FRAME_HEAD_CHECK_2  'h'     /**< 帧头第2字节：0x68 */
+#define FRAME_HEAD_CHECK_3  'z'     /**< 帧头第3字节：0x7A */
+
+/* ======================== 公共函数声明 ======================== */
+
+/**
+ * @brief  传输遥控器数据到飞机
+ *
+ * @details 完整的传输流程：
+ *          1. 打包数据帧（17字节）
+ *          2. 计算校验和
+ *          3. 切换到TX模式
+ *          4. 发送数据帧
+ *          5. 切换到RX模式
+ *          6. 接收飞机响应
+ *
+ * 帧格式（17字节）：
+ * - [0-2]:   帧头 "lhz"
+ * - [3-4]:   THR（油门，大端序）
+ * - [5-6]:   YAW（偏航，大端序）
+ * - [7-8]:   PIT（俯仰，大端序）
+ * - [9-10]:  ROL（横滚，大端序）
+ * - [11]:    关机标志
+ * - [12]:    定高标志
+ * - [13-16]: 校验和（大端序）
+ *
+ * @note   此函数在com_task中每10ms调用一次
+ * @note   发送失败时不会接收飞机响应
  */
 void App_transmit_data(void);
 
-
-#endif // __APP_TRANSMIT_DATA__
+#endif /* __APP_TRANSMIT_DATA__ */

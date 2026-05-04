@@ -1,39 +1,61 @@
+/**
+ * @file    Com_pid.h
+ * @brief   PIDæ§åˆ¶ç®—æ³•æ¨¡å— - æ”¯æŒå•çº§PIDå’Œä¸²çº§PID
+ * @author  langhz666
+ * @date    2025-09-27
+ * @note    ä¸²çº§PIDç”¨äºå§¿æ€æ§åˆ¶: å¤–ç¯(è§’åº¦) + å†…ç¯(è§’é€Ÿåº¦)
+ */
+
 #ifndef __COM_PID__
 #define __COM_PID__
 
 #include "main.h"
-#define PID_PERIOD 0.006
-
-// PID½á¹¹Ìå   Èç¹ûCPUĞÔÄÜ¹»Ç¿  ÍÆ¼öÊ¹ÓÃdouble 
-// kp,ki,kdĞèÒªÔÚ³õÊ¼»¯Ê±È·¶¨   Ä¿±êÖµºÍ²âÁ¿Öµ  ĞèÒªÔÚ¼ÆËãÊ±´«µİ
-typedef struct
-{
-    float kp;       // ±ÈÀı²¿·Ö  ÖµÔ½´óÏìÓ¦ËÙ¶ÈÔ½¿ì
-    float ki;       // »ı·Ö²¿·Ö  ½â¾öÎÈÌ¬Îó²î  ÎŞÈË»ú¿ØÖÆÖĞ  »ı·ÖÏîÒ»°ã²»Ê¹ÓÃ
-    float kd;       // Î¢·Ö²¿·Ö  ÖµÔ½´ó ÒÖÖÆĞ§¹ûÔ½ºÃ ½â¾ö¹ıµ÷Õğµ´
-    float err;      // Îó²îÖµ
-    float desire;   // Ä¿±êÖµ
-    float measure;  // ²âÁ¿Öµ
-    float last_err; // ÉÏÒ»´ÎµÄÎó²î
-    float integral; // »ı·ÖÀÛ»ı
-    float output;   // Êä³ö½á¹û
-} PID_Struct;
-
-
-// µ¥´ÎPID¼ÆËã
-void Com_PID_Calc(PID_Struct *pid);
-
-// ´®¼¶PID¼ÆËã
-void Com_PID_Calc_Chain(PID_Struct *out_pid, PID_Struct *in_pid);\
 
 /**
- * @brief ÏŞÖÆÊıÖµÔÚÕı³£µÄ·¶Î§ÄÚ
- * 
- * @param speed 
- * @param max_speed 
- * @param min_speed 
- * @return int16_t 
+ * @brief PIDæ§åˆ¶å‘¨æœŸ (ç§’)
+ * @note  å¯¹åº”é£æ§ä»»åŠ¡å‘¨æœŸ6ms
  */
-int16_t Com_limit(int16_t speed, int16_t max_speed,int16_t min_speed);
+#define PID_PERIOD 0.006
 
-#endif // __COM_PID__
+/**
+ * @brief PIDæ§åˆ¶å™¨ç»“æ„ä½“
+ * @note  è‹¥CPUæ€§èƒ½è¶³å¤Ÿï¼Œå»ºè®®ä½¿ç”¨doubleç±»å‹æé«˜ç²¾åº¦
+ */
+typedef struct
+{
+    float kp;       /**< æ¯”ä¾‹ç³»æ•° - å€¼è¶Šå¤§å“åº”é€Ÿåº¦è¶Šå¿« */
+    float ki;       /**< ç§¯åˆ†ç³»æ•° - æ¶ˆé™¤é™æ€è¯¯å·®ï¼Œä¸€èˆ¬ä¸ä½¿ç”¨ */
+    float kd;       /**< å¾®åˆ†ç³»æ•° - å€¼è¶Šå¤§æŠ‘åˆ¶æ•ˆæœè¶Šå¼ºï¼Œä½†ä¼šæ”¾å¤§å™ªå£° */
+    float err;      /**< å½“å‰è¯¯å·® (measure - desire) */
+    float desire;   /**< ç›®æ ‡å€¼ */
+    float measure;  /**< æµ‹é‡å€¼ */
+    float last_err; /**< ä¸Šä¸€æ¬¡è¯¯å·® */
+    float integral; /**< è¯¯å·®ç´¯ç§¯é‡ */
+    float output;   /**< PIDè¾“å‡ºå€¼ */
+} PID_Struct;
+
+/**
+ * @brief å•çº§PIDè®¡ç®—
+ * @param pid   PIDç»“æ„ä½“æŒ‡é’ˆ
+ * @note  output = kp*err + ki*integral*dt + kd*der/dt
+ */
+void Com_PID_Calc(PID_Struct *pid);
+
+/**
+ * @brief ä¸²çº§PIDè®¡ç®— (å¤–ç¯+å†…ç¯)
+ * @param out_pid   å¤–ç¯PIDç»“æ„ä½“æŒ‡é’ˆ (è§’åº¦ç¯)
+ * @param in_pid    å†…ç¯PIDç»“æ„ä½“æŒ‡é’ˆ (è§’é€Ÿåº¦ç¯)
+ * @note  å¤–ç¯è¾“å‡ºä½œä¸ºå†…ç¯ç›®æ ‡å€¼
+ */
+void Com_PID_Calc_Chain(PID_Struct *out_pid, PID_Struct *in_pid);
+
+/**
+ * @brief é™å¹…å‡½æ•° - å°†å€¼é™åˆ¶åœ¨æŒ‡å®šèŒƒå›´å†…
+ * @param speed      è¾“å…¥å€¼
+ * @param max_speed  æœ€å¤§å€¼
+ * @param min_speed  æœ€å°å€¼
+ * @return  é™å¹…åçš„å€¼
+ */
+int16_t Com_limit(int16_t speed, int16_t max_speed, int16_t min_speed);
+
+#endif /* __COM_PID__ */

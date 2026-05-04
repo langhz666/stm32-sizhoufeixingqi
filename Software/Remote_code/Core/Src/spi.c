@@ -2,8 +2,7 @@
 /**
   ******************************************************************************
   * @file    spi.c
-  * @brief   This file provides code for the configuration
-  *          of the SPI instances.
+  * @brief   SPI外设配置与初始化
   ******************************************************************************
   * @attention
   *
@@ -26,7 +25,24 @@
 
 SPI_HandleTypeDef hspi1;
 
-/* SPI1 init function */
+/**
+ * @brief  SPI1初始化函数
+ *
+ * @details 配置SPI1用于SI24R1无线模块通信：
+ *          - 模式：主机模式
+ *          - 方向：全双工（双线）
+ *          - 数据大小：8位
+ *          - 时钟极性：低（CPOL=0）
+ *          - 时钟相位：第一边沿（CPHA=0）
+ *          - 片选：软件控制
+ *          - 波特率分频：8分频（72MHz/8=9MHz）
+ *          - 数据位序：MSB先发
+ *          - TI模式：禁用
+ *          - CRC：禁用
+ *
+ * @note   此函数由STM32CubeMX自动生成
+ * @note   SPI1用于SI24R1 2.4G无线模块
+ */
 void MX_SPI1_Init(void)
 {
 
@@ -59,6 +75,21 @@ void MX_SPI1_Init(void)
 
 }
 
+/**
+ * @brief  SPI1 MSP初始化回调函数
+ *
+ * @details 配置SPI1的底层硬件资源：
+ *          - 使能SPI1时钟
+ *          - 配置GPIO引脚
+ *
+ * GPIO配置：
+ * - PB3：SPI1_SCK（复用推挽输出）
+ * - PB4：SPI1_MISO（浮空输入）
+ * - PB5：SPI1_MOSI（复用推挽输出）
+ *
+ * @note   此函数由HAL_SPI_Init()自动调用
+ * @note   使用AFIO重映射SPI1到PB3/PB4/PB5
+ */
 void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
 {
 
@@ -68,11 +99,11 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
   /* USER CODE BEGIN SPI1_MspInit 0 */
 
   /* USER CODE END SPI1_MspInit 0 */
-    /* SPI1 clock enable */
+    /* 使能SPI1时钟 */
     __HAL_RCC_SPI1_CLK_ENABLE();
 
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    /**SPI1 GPIO Configuration
+    /**SPI1 GPIO配置
     PB3     ------> SPI1_SCK
     PB4     ------> SPI1_MISO
     PB5     ------> SPI1_MOSI
@@ -95,6 +126,16 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
   }
 }
 
+/**
+ * @brief  SPI1 MSP反初始化回调函数
+ *
+ * @details 释放SPI1的底层硬件资源：
+ *          - 禁用SPI1时钟
+ *          - 反初始化GPIO引脚
+ *
+ * @note   此函数由HAL_SPI_DeInit()自动调用
+ * @note   此函数由STM32CubeMX自动生成
+ */
 void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
 {
 
@@ -103,10 +144,10 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
   /* USER CODE BEGIN SPI1_MspDeInit 0 */
 
   /* USER CODE END SPI1_MspDeInit 0 */
-    /* Peripheral clock disable */
+    /* 禁用外设时钟 */
     __HAL_RCC_SPI1_CLK_DISABLE();
 
-    /**SPI1 GPIO Configuration
+    /**SPI1 GPIO配置
     PB3     ------> SPI1_SCK
     PB4     ------> SPI1_MISO
     PB5     ------> SPI1_MOSI

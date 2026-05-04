@@ -1,31 +1,34 @@
+/**
+ * @file    Int_led.c
+ * @brief   LEDé©±åŠ¨å®ç°
+ * @author  langhz666
+ * @date    2025-09-27
+ * @note    LEDä½ç”µå¹³ç‚¹äº®
+ */
+
 #include "Int_led.h"
 
 /**
- * @brief ´ò¿ªLEDµÆ
- *
- * @param led
+ * @brief ç‚¹äº®LED
+ * @param led LEDç»“æ„ä½“æŒ‡é’ˆ
  */
 void Int_led_turn_on(LED_Struct *led)
 {
-    // Ö±½ÓĞŞ¸ÄÒı½ÅµçÆ½ÎªµÍµçÆ½  ¿ªµÆ
     HAL_GPIO_WritePin(led->port, led->pin, GPIO_PIN_RESET);
 }
 
 /**
- * @brief ¹Ø±ÕLEDµÆ
- *
- * @param led
+ * @brief å…³é—­LED
+ * @param led LEDç»“æ„ä½“æŒ‡é’ˆ
  */
 void Int_led_turn_off(LED_Struct *led)
 {
-    // Ö±½ÓĞŞ¸ÄÒı½ÅµçÆ½Îª¸ßµçÆ½  ¹ØµÆ
     HAL_GPIO_WritePin(led->port, led->pin, GPIO_PIN_SET);
 }
 
 /**
- * @brief ·­×ªLEDµÆ
- * 
- * @param led 
+ * @brief ç¿»è½¬LEDçŠ¶æ€
+ * @param led LEDç»“æ„ä½“æŒ‡é’ˆ
  */
 void Int_led_toggle(LED_Struct *led)
 {

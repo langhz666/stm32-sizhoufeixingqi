@@ -2,8 +2,15 @@
 /**
   ******************************************************************************
   * @file    stm32f1xx_hal_conf.h
-  * @brief   HAL configuration file.
+  * @brief   HAL库模块使能配置文件
   ******************************************************************************
+  * @details 本文件控制HAL库中哪些外设模块被编译：
+  *          - 使能的模块：ADC、DMA、GPIO、SPI、UART、TIM、PWR
+  *          - 未使能的模块：CAN、I2C、I2S、RTC、WDG等
+  *
+  * @note   此文件由STM32CubeMX自动生成
+  * @note   修改模块使能后需重新生成代码
+  *
   * @attention
   *
   * Copyright (c) 2017 STMicroelectronics.

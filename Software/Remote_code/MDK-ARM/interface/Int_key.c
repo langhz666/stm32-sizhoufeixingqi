@@ -1,118 +1,160 @@
+/**
+ * @file    Int_key.c
+ * @brief   æŒ‰é”®æ‰«æä¸Žå¤„ç†æ¨¡å—
+ * @author  langhz666
+ * @date    2025-09-27
+ *
+ * @details æœ¬æ¨¡å—è´Ÿè´£æ‰«ææ‰€æœ‰GPIOæŒ‰é”®ï¼Œå®žçŽ°ï¼š
+ *          - æŒ‰é”®æ¶ˆæŠ–ï¼ˆ5mså»¶æ—¶ï¼‰
+ *          - ç­‰å¾…é‡Šæ”¾æœºåˆ¶ï¼ˆé˜²æ­¢é‡å¤è§¦å‘ï¼‰
+ *          - é•¿æŒ‰æ£€æµ‹ï¼ˆRIGHT_XæŒ‰é”®ï¼Œé˜ˆå€¼1ç§’ï¼‰
+ *
+ * æŒ‰é”®å¸ƒå±€ï¼š
+ * - æ–¹å‘é”®ï¼šUPã€DOWNã€LEFTã€RIGHTï¼ˆGPIOä½Žç”µå¹³æœ‰æ•ˆï¼‰
+ * - åŠŸèƒ½é”®ï¼šLEFT_Xã€RIGHT_Xï¼ˆGPIOä½Žç”µå¹³æœ‰æ•ˆï¼‰
+ *
+ * ç¡¬ä»¶ç‰¹æ€§ï¼š
+ * - æ‰€æœ‰æŒ‰é”®æŽ¥åœ°ï¼ˆä½Žç”µå¹³æœ‰æ•ˆï¼‰
+ * - å†…éƒ¨ä¸Šæ‹‰ç”µé˜»
+ * - æŒ‰ä¸‹æ—¶GPIOè¯»å–ä¸º0ï¼Œé‡Šæ”¾æ—¶ä¸º1
+ *
+ * @note   æŒ‰é”®æ‰«æå‘¨æœŸ20msï¼Œæ¶ˆæŠ–æ—¶é—´5ms
+ * @note   ç­‰å¾…é‡Šæ”¾æœºåˆ¶ä¼šé˜»å¡žä»»åŠ¡ç›´åˆ°æŒ‰é”®é‡Šæ”¾
+ * @note   RIGHT_Xé•¿æŒ‰é˜ˆå€¼ï¼š1000msï¼ˆ1ç§’ï¼‰
+ */
+
 #include "Int_key.h"
 
 /**
- * @brief »ñÈ¡µ±Ç°°´¼üÊÇ·ñ±»°´ÏÂ
+ * @brief  æ‰«æå¹¶è¿”å›žæŒ‰é”®çŠ¶æ€
  *
- * @return Key_type KEY_NONE:Ã»ÓÐ°´¼ü°´ÏÂ  ÆäËû¶¼ÊÇ¶ÔÓ¦±»°´¼üµÄ±ê¼Ç
+ * @return Key_type: KEY_NONEè¡¨ç¤ºæ— æŒ‰é”®æŒ‰ä¸‹ï¼Œå…¶ä»–å€¼è¡¨ç¤ºå…·ä½“æŒ‰é”®
+ *
+ * @details æ‰«æä¼˜å…ˆçº§é¡ºåºï¼š
+ *          1. æ–¹å‘é”®ï¼ˆUPã€DOWNã€LEFTã€RIGHTï¼‰
+ *          2. LEFT_XåŠŸèƒ½é”®
+ *          3. RIGHT_XåŠŸèƒ½é”®ï¼ˆæ”¯æŒé•¿æŒ‰æ£€æµ‹ï¼‰
+ *
+ * æ¶ˆæŠ–ç®—æ³•ï¼š
+ * 1. æ£€æµ‹åˆ°ä½Žç”µå¹³ï¼ˆæŒ‰é”®æŒ‰ä¸‹ï¼‰
+ * 2. å»¶æ—¶5msï¼ˆæ¶ˆæŠ–ï¼‰
+ * 3. å†æ¬¡æ£€æµ‹ï¼Œå¦‚æžœä»ä¸ºä½Žç”µå¹³åˆ™ç¡®è®¤æŒ‰ä¸‹
+ * 4. ç­‰å¾…æŒ‰é”®é‡Šæ”¾ï¼ˆé˜²æ­¢é‡å¤è§¦å‘ï¼‰
+ * 5. è¿”å›žæŒ‰é”®ç±»åž‹
+ *
+ * RIGHT_Xé•¿æŒ‰æ£€æµ‹ï¼š
+ * 1. è®°å½•æŒ‰ä¸‹å¼€å§‹æ—¶é—´
+ * 2. ç­‰å¾…æŒ‰é”®é‡Šæ”¾
+ * 3. è®¡ç®—æŒ‰ä¸‹æŒç»­æ—¶é—´
+ * 4. å¦‚æžœ>1ç§’è¿”å›žKEY_RIGHT_X_LONG
+ * 5. å¦åˆ™è¿”å›žKEY_RIGHT_X
+ *
+ * @note   å‡½æ•°ä¼šé˜»å¡žç›´åˆ°æŒ‰é”®é‡Šæ”¾
+ * @note   å¦‚æžœæ— æŒ‰é”®æŒ‰ä¸‹ï¼Œç«‹å³è¿”å›žKEY_NONE
  */
 Key_type Int_key_get(void)
 {
+    /* ========== æ‰«æUPæŒ‰é”® ========== */
     if (HAL_GPIO_ReadPin(KEY_UP_GPIO_Port, KEY_UP_Pin) == GPIO_PIN_RESET)
     {
-        // 1. µç»¡¶¶¶¯ => ÐèÒª½øÐÐÏû¶¶
-        vTaskDelay(5);
+        /* æ­¥éª¤1ï¼šæ£€æµ‹åˆ°ä½Žç”µå¹³ */
+        vTaskDelay(5);  /* æ­¥éª¤2ï¼šæ¶ˆæŠ–å»¶æ—¶5ms */
+
+        /* æ­¥éª¤3ï¼šå†æ¬¡ç¡®è®¤ */
         if (HAL_GPIO_ReadPin(KEY_UP_GPIO_Port, KEY_UP_Pin) == GPIO_PIN_RESET)
         {
-            // 2. ÈË°´ÏÂµÄÊ±¼äÍ¨³£±È½Ï³¤  =>  ÎªÁË²»±»¶à´ÎÅÐ¶Ï => µÈ´ýÌ§Æð°´¼ü²Å·µ»Ø
+            /* æ­¥éª¤4ï¼šç­‰å¾…æŒ‰é”®é‡Šæ”¾ */
             while (HAL_GPIO_ReadPin(KEY_UP_GPIO_Port, KEY_UP_Pin) == GPIO_PIN_RESET)
             {
-                vTaskDelay(1);
+                vTaskDelay(1);  /* 1mså»¶æ—¶ï¼Œé‡Šæ”¾CPU */
             }
 
-            // KEY_UP±»°´ÏÂ
+            /* æ­¥éª¤5ï¼šè¿”å›žæŒ‰é”®ç±»åž‹ */
             return KEY_UP;
         }
     }
+    /* ========== æ‰«æDOWNæŒ‰é”® ========== */
     else if (HAL_GPIO_ReadPin(KEY_DOWN_GPIO_Port, KEY_DOWN_Pin) == GPIO_PIN_RESET)
     {
-        // 1. µç»¡¶¶¶¯ => ÐèÒª½øÐÐÏû¶¶
         vTaskDelay(5);
         if (HAL_GPIO_ReadPin(KEY_DOWN_GPIO_Port, KEY_DOWN_Pin) == GPIO_PIN_RESET)
         {
-            // 2. ÈË°´ÏÂµÄÊ±¼äÍ¨³£±È½Ï³¤  =>  ÎªÁË²»±»¶à´ÎÅÐ¶Ï => µÈ´ýÌ§Æð°´¼ü²Å·µ»Ø
             while (HAL_GPIO_ReadPin(KEY_DOWN_GPIO_Port, KEY_DOWN_Pin) == GPIO_PIN_RESET)
             {
                 vTaskDelay(1);
             }
-            // KEY_DOWN±»°´ÏÂ
             return KEY_DOWN;
         }
     }
+    /* ========== æ‰«æLEFTæŒ‰é”® ========== */
     else if (HAL_GPIO_ReadPin(KEY_LEFT_GPIO_Port, KEY_LEFT_Pin) == GPIO_PIN_RESET)
     {
-        // 1. µç»¡¶¶¶¯ => ÐèÒª½øÐÐÏû¶¶
         vTaskDelay(5);
         if (HAL_GPIO_ReadPin(KEY_LEFT_GPIO_Port, KEY_LEFT_Pin) == GPIO_PIN_RESET)
         {
-            // 2. ÈË°´ÏÂµÄÊ±¼äÍ¨³£±È½Ï³¤  =>  ÎªÁË²»±»¶à´ÎÅÐ¶Ï => µÈ´ýÌ§Æð°´¼ü²Å·µ»Ø
             while (HAL_GPIO_ReadPin(KEY_LEFT_GPIO_Port, KEY_LEFT_Pin) == GPIO_PIN_RESET)
             {
                 vTaskDelay(1);
             }
-            // KEY_LEFT±»°´ÏÂ
             return KEY_LEFT;
         }
     }
+    /* ========== æ‰«æRIGHTæŒ‰é”® ========== */
     else if (HAL_GPIO_ReadPin(KEY_RIGHT_GPIO_Port, KEY_RIGHT_Pin) == GPIO_PIN_RESET)
     {
-        // 1. µç»¡¶¶¶¯ => ÐèÒª½øÐÐÏû¶¶
         vTaskDelay(5);
         if (HAL_GPIO_ReadPin(KEY_RIGHT_GPIO_Port, KEY_RIGHT_Pin) == GPIO_PIN_RESET)
         {
-            // 2. ÈË°´ÏÂµÄÊ±¼äÍ¨³£±È½Ï³¤  =>  ÎªÁË²»±»¶à´ÎÅÐ¶Ï => µÈ´ýÌ§Æð°´¼ü²Å·µ»Ø
             while (HAL_GPIO_ReadPin(KEY_RIGHT_GPIO_Port, KEY_RIGHT_Pin) == GPIO_PIN_RESET)
             {
                 vTaskDelay(1);
             }
-            // KEY_RIGHT±»°´ÏÂ
             return KEY_RIGHT;
         }
     }
-
-    // ×óÉÏ°´¼ü
+    /* ========== æ‰«æLEFT_XæŒ‰é”® ========== */
     else if (HAL_GPIO_ReadPin(KEY_LEFT_X_GPIO_Port, KEY_LEFT_X_Pin) == GPIO_PIN_RESET)
     {
-        // 1. µç»¡¶¶¶¯ => ÐèÒª½øÐÐÏû¶¶
         vTaskDelay(5);
         if (HAL_GPIO_ReadPin(KEY_LEFT_X_GPIO_Port, KEY_LEFT_X_Pin) == GPIO_PIN_RESET)
         {
-            // 2. ÈË°´ÏÂµÄÊ±¼äÍ¨³£±È½Ï³¤  =>  ÎªÁË²»±»¶à´ÎÅÐ¶Ï => µÈ´ýÌ§Æð°´¼ü²Å·µ»Ø
             while (HAL_GPIO_ReadPin(KEY_LEFT_X_GPIO_Port, KEY_LEFT_X_Pin) == GPIO_PIN_RESET)
             {
                 vTaskDelay(1);
             }
-
-            // ×óÉÏ°´¼ü±»°´ÏÂ
             return KEY_LEFT_X;
         }
     }
-    // ÓÒÉÏ°´¼ü
+    /* ========== æ‰«æRIGHT_XæŒ‰é”®ï¼ˆæ”¯æŒé•¿æŒ‰æ£€æµ‹ï¼‰ ========== */
     else if (HAL_GPIO_ReadPin(KEY_RIGHT_X_GPIO_Port, KEY_RIGHT_X_Pin) == GPIO_PIN_RESET)
     {
-        // ´ËÊ±¿ªÊ¼¼ÆÊ± => ³¤°´Îª³¬¹ý1s
-        TickType_t count1 = xTaskGetTickCount();
-        // 1. µç»¡¶¶¶¯ => ÐèÒª½øÐÐÏû¶¶
-        vTaskDelay(5);
+        /* è®°å½•æŒ‰ä¸‹å¼€å§‹æ—¶é—´ */
+        TickType_t press_start = xTaskGetTickCount();
+
+        vTaskDelay(5);  /* æ¶ˆæŠ–å»¶æ—¶ */
         if (HAL_GPIO_ReadPin(KEY_RIGHT_X_GPIO_Port, KEY_RIGHT_X_Pin) == GPIO_PIN_RESET)
         {
-            // ±»ÈË°´ÏÂ ²»ÊÇµç»¡¶¶¶¯
+            /* ç­‰å¾…æŒ‰é”®é‡Šæ”¾ */
             while (HAL_GPIO_ReadPin(KEY_RIGHT_X_GPIO_Port, KEY_RIGHT_X_Pin) == GPIO_PIN_RESET)
             {
-                // 1msµÄÊ±¼ä cpuÊÇÊÍ·ÅµÄ
-                vTaskDelay(1);
+                vTaskDelay(1);  /* 1mså»¶æ—¶ï¼Œé‡Šæ”¾CPU */
             }
-            TickType_t count2 = xTaskGetTickCount();
-            if (count2 - count1 > 1000)
+
+            /* è®¡ç®—æŒ‰ä¸‹æŒç»­æ—¶é—´ */
+            TickType_t press_duration = xTaskGetTickCount() - press_start;
+
+            /* åˆ¤æ–­é•¿æŒ‰é˜ˆå€¼ï¼ˆ1ç§’ = 1000msï¼‰ */
+            if (press_duration > 1000)
             {
-                return KEY_RIGHT_X_LONG;
+                return KEY_RIGHT_X_LONG;    /* é•¿æŒ‰ */
             }
             else
             {
-                return KEY_RIGHT_X;
+                return KEY_RIGHT_X;         /* çŸ­æŒ‰ */
             }
         }
     }
 
-    // Ã»ÓÐ°´¼ü°´ÏÂ
+    /* ========== æ— æŒ‰é”®æŒ‰ä¸‹ ========== */
     return KEY_NONE;
 }

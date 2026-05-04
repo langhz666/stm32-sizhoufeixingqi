@@ -2,8 +2,7 @@
 /**
   ******************************************************************************
   * @file    usart.c
-  * @brief   This file provides code for the configuration
-  *          of the USART instances.
+  * @brief   USART外设配置与初始化
   ******************************************************************************
   * @attention
   *
@@ -26,8 +25,21 @@
 
 UART_HandleTypeDef huart1;
 
-/* USART1 init function */
-
+/**
+ * @brief  USART1初始化函数
+ *
+ * @details 配置USART1为调试串口：
+ *          - 波特率：115200
+ *          - 数据位：8位
+ *          - 停止位：1位
+ *          - 校验：无
+ *          - 模式：收发双向
+ *          - 流控：无
+ *          - 过采样：16倍
+ *
+ * @note   此函数由STM32CubeMX自动生成
+ * @note   USART1用于printf()重定向（调试输出）
+ */
 void MX_USART1_UART_Init(void)
 {
 
@@ -56,6 +68,20 @@ void MX_USART1_UART_Init(void)
 
 }
 
+/**
+ * @brief  USART1 MSP初始化回调函数
+ *
+ * @details 配置USART1的底层硬件资源：
+ *          - 使能USART1时钟
+ *          - 配置GPIO引脚
+ *
+ * GPIO配置：
+ * - PA9：USART1_TX（复用推挽输出）
+ * - PA10：USART1_RX（浮空输入）
+ *
+ * @note   此函数由HAL_UART_Init()自动调用
+ * @note   此函数由STM32CubeMX自动生成
+ */
 void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 {
 
@@ -65,11 +91,11 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
   /* USER CODE BEGIN USART1_MspInit 0 */
 
   /* USER CODE END USART1_MspInit 0 */
-    /* USART1 clock enable */
+    /* 使能USART1时钟 */
     __HAL_RCC_USART1_CLK_ENABLE();
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
-    /**USART1 GPIO Configuration
+    /**USART1 GPIO配置
     PA9     ------> USART1_TX
     PA10     ------> USART1_RX
     */
@@ -89,6 +115,16 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
   }
 }
 
+/**
+ * @brief  USART1 MSP反初始化回调函数
+ *
+ * @details 释放USART1的底层硬件资源：
+ *          - 禁用USART1时钟
+ *          - 反初始化GPIO引脚
+ *
+ * @note   此函数由HAL_UART_DeInit()自动调用
+ * @note   此函数由STM32CubeMX自动生成
+ */
 void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 {
 
@@ -97,10 +133,10 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
   /* USER CODE BEGIN USART1_MspDeInit 0 */
 
   /* USER CODE END USART1_MspDeInit 0 */
-    /* Peripheral clock disable */
+    /* 禁用外设时钟 */
     __HAL_RCC_USART1_CLK_DISABLE();
 
-    /**USART1 GPIO Configuration
+    /**USART1 GPIO配置
     PA9     ------> USART1_TX
     PA10     ------> USART1_RX
     */

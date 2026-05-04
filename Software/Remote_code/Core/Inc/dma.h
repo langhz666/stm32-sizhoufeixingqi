@@ -2,8 +2,7 @@
 /**
   ******************************************************************************
   * @file    dma.h
-  * @brief   This file contains all the function prototypes for
-  *          the dma.c file
+  * @brief   DMA控制器配置头文件
   ******************************************************************************
   * @attention
   *
@@ -17,7 +16,7 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-/* Define to prevent recursive inclusion -------------------------------------*/
+/* 防止重复包含 */
 #ifndef __DMA_H__
 #define __DMA_H__
 
@@ -28,8 +27,6 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-/* DMA memory to memory transfer handles -------------------------------------*/
-
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
@@ -38,6 +35,7 @@ extern "C" {
 
 /* USER CODE END Private defines */
 
+/** @brief DMA控制器初始化函数 */
 void MX_DMA_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -49,4 +47,3 @@ void MX_DMA_Init(void);
 #endif
 
 #endif /* __DMA_H__ */
-
